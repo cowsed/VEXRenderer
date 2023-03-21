@@ -212,7 +212,7 @@ float max(float a, float b)
 	}
 }
 
-float clamp(float v, float min, float max)
+float my_clamp(float v, float min, float max)
 {
 	if (v < min)
 	{

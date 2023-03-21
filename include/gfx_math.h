@@ -73,4 +73,4 @@ std::ostream &operator<<(std::ostream &os, const Mat4 &m);
 
 float min(float a, float b);
 float max(float a, float b);
-float clamp(float v, float min, float max);
+float my_clamp(float v, float min, float max);

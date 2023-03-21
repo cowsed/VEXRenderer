@@ -1,0 +1,75 @@
+Notes on the Node Heap
+Fri Jan 27 12:35:33 EST 2023
+
+The node heap is a minimum-ordered heap, and 
+its implementation is specific to the application.
+Refer also to project documentation online or in the node_heap.h file.
+
+A Heap implementation requires input of a pre-defined, fixed-capacity array
+of Node-type items whose ordering field is called 'frequency'.
+(For simplicity, this design does not dynamically allocate heap storage.)
+
+Components of the heap are the heap's state.
+The supplied heap structure has the following fields:
+	#heap.capacity is the maximum capacity, i.e. the array dimension.
+	#heap.size is the current number of valid entries in the heap.
+	#heap.array is the array that holds the heap's entries.
+
+All entries in the heap's array between size and index capacity-1 are unused.
+Code needs to initialize memory to indicate that an entry is an unused entry.
+Python code uses a 'None' value to represent that an unused array entry.
+There may be zero or more unused nodes in the heap.
+
+Also Symbol struct entries in the Node may be unused; that means code also
+needs to initialize Symbol memory to indicate that a Symbol is an unused entry.
+C code uses a 'NUL' byte to represent that an entry is unused.
+
+The heap uses an application-specific function to compare Nodes.
+
+compare_node( heap, index1, index2 )	# asks is index1 entry < index2 entry?
+
+Also a swap function is needed for this implementation.
+Because the storage for the heap is pre-allocated, it will be necessary
+to swap entries when moving/copying Node structures within the heap's array.
+
+Since the heap has predefined storage for all symbols in each of its nodes,
+it makes sense to make the heap by `heapifying' the part of the heap array
+that contains a used symbol. The process of heapifying involves taking
+an array of values and shifting them around in the array until the
+arrangement of values represents a heap structure in an array.
+
+The algorithm for heapifying a heap array of 'size' valid entries is:
+	Let h be the index value 1.
+	The array of values from index [0]...[h-1] is trivially in heap order.
+	While ( h < size ) :
+		Increment h.
+		The heap is now invalid due to the value at position h.
+		Fix it by sifting the value at position h up to its proper
+		location. At this point, there is a heap of size h
+		at the start of the array and size-h unordered elements
+		at the end.
+        Now the heap's array is now heapified and ready for use as a heap
+
+
+sift_up( heap, index )	# sifts entries up from the index.
+
+	# heap is a reference (pointer) to an initialized heap.
+	# pre: index <= heap.size
+	# post: heap.array has the required min-heap order property.
+	# algorithm/implementation details
+	# starting from the index location in heap.array, sift an entry up
+	# until heap.array has the required min-heap order property.
+	# datap is a reference (pointer) to the start of the heap's array.
+	# entries in heap.array have now been re-heapified
+
+sift_down( heap, index )	# sifts entries down from the index.
+
+	# heap is a reference (pointer) to an initialized heap.
+	# pre: 0 <= index < heap.size
+	# post: heap.array has the required min-heap order property.
+	# algorithm/implementation details
+	# starting from the index location in heap.array, sift the entry down
+	# until the heap.array has the required min-heap order property.
+	# datap is a reference (pointer) to the start of the heap's array.
+	# entries in heap.array have now been (re)heapified.
+

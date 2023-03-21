@@ -36,7 +36,7 @@ const float ambient_contrib = 0.6;
 const Vec3 light_dir = Vec3({1, 1, -1}).Normalize();
 const float fov = 3.0; // in no units in particular. higher is 'more zoomed in'
 const float near = 1.0;
-const float far = 20.0;
+const float far = 30.0;
 const bool do_backface_culling = true; // seems to go faster with
 const Vec3 view_dir_cam_space = Vec3(0, 0, -1.0);
 
@@ -138,7 +138,7 @@ double projection_time;
 double clear_time;
 double blit_time;
 
-void render(uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH], double time_seconds, double y)
+void render(uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH], double x, double y, double z)
 {
   vex::timer thing_tmr;
   thing_tmr.reset();
@@ -147,10 +147,10 @@ void render(uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH], double ti
   // Project all the points to screen space
   thing_tmr.reset();
 
-  const Mat4 trans = Translate3D({0, -0, -10});
-  const Mat4 rotx = RotateX(y / 14.0);
-  const Mat4 roty = RotateY(time_seconds);
-  const Mat4 transform = rotx * (trans * roty);
+  Mat4 trans = Translate3D({0, -0, (float)(-10.0)*(float)z});
+  const Mat4 rotx = RotateX(y);
+  const Mat4 roty = RotateY(x);
+  Mat4 transform =  (trans * rotx *  roty);
 
   // std::cerr << "transform:\n"
   // 		  << transform << std::endl;
@@ -198,34 +198,44 @@ void render(uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH], double ti
 }
 
 controller main_controller;
+
 bool show_stats = false;
 bool demo_mode = true; // if true rotate in circles
 void usercontrol(void)
 {
-  main_controller.ButtonA.pressed([]()
-                                  { show_stats = !show_stats; });
-  main_controller.ButtonB.pressed([]()
-                                  { demo_mode = !demo_mode; });
   std::cout << "Rendering" << std::endl;
   precalculate();
 
   // increasing number of seconds to render with
   float animation_time = 0.0;
 
+  double x = 0.0;
+  double y = 0.0;
+  double z = 1.0;
+
+  main_controller.ButtonA.pressed([](){show_stats = !show_stats;});
+  main_controller.ButtonB.pressed([](){demo_mode = !demo_mode;});
   while (true)
   {
 
     vex::timer tmr;
     tmr.reset();
     Brain.Screen.clearScreen(0xFFFFFFFF);
-    float x = (float)(main_controller.Axis1.position(pct)) * .750 / 100.0 + M_PI;
-    float y = (float)(main_controller.Axis2.position(pct)) * 2.0 / 100.0;
+    float dx = main_controller.Axis1.position()/400.0;
+    float dy = main_controller.Axis2.position()/400.0;
+    float dz = main_controller.Axis3.position()/500.0;
+    x+=dx;
+    y+=dy;
+
+    z+=dz * -1.0;
+    z = my_clamp(z, 0.1, 2.0);
     if (demo_mode)
     {
       x = animation_time;
-      y = -.1;
+      //y = -.1;
+      //z = 1.0;
     }
-    render(color_buffer1, depth_buffer1, x, y);
+    render(color_buffer1, depth_buffer1, x, y, z);
 
     double frame_time_ms = tmr.time(timeUnits::msec);
     double frame_time_s = tmr.time(timeUnits::sec);
@@ -243,6 +253,10 @@ void usercontrol(void)
       Brain.Screen.printAt(10, 100, "clear time: %.0fms", clear_time);
       Brain.Screen.printAt(10, 120, "project time: %.0fms", projection_time);
       Brain.Screen.printAt(10, 140, "blit time: %.0f", blit_time);
+
+      Brain.Screen.printAt(10, 170, "%d faces", num_faces);
+      Brain.Screen.printAt(10, 190, "%d verts", num_points);
+      
     }
 
     Brain.Screen.render();

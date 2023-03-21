@@ -21,7 +21,7 @@ struct Color
     Vec3 toVec3() const;
     uint32_t const toIntColor() const
     {
-        float nr = clamp(r, 0, 1.0), ng = clamp(g, 0, 1.0), nb = clamp(b, 0, 1.0);
+        float nr = my_clamp(r, 0, 1.0), ng = my_clamp(g, 0, 1.0), nb = my_clamp(b, 0, 1.0);
         uint32_t ir = static_cast<uint32_t>(255.0 * r);
         uint32_t ig = static_cast<uint32_t>(255.0 * g);
         uint32_t ib = static_cast<uint32_t>(255.0 * b);
