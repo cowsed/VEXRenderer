@@ -153,7 +153,7 @@ inline void fill_tri(int i, Vec3 v1, Vec3 v2, Vec3 v3, uint32_t color_buf[HEIGHT
   const float amb = .2;
 
   const Vec3 pre_col = mat.diffuse * (amb + (1 - amb) * my_clamp(world_normal.Dot(light_dir), 0.0, 1.0)); // shade_pixel(maybe_mid, world_normal, light_pos, mat);
-  const Vec3 col = {pow(pre_col.r, 1 / screenGamma), pow(pre_col.g, 1 / screenGamma), pow(pre_col.b, 1 / screenGamma)};
+  const Vec3 col = {powf(pre_col.r, 1 / screenGamma), powf(pre_col.g, 1 / screenGamma), powf(pre_col.b, 1 / screenGamma)};
 
   for (int y = miny; y < maxy; y += 1)
   {
