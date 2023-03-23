@@ -2,6 +2,7 @@
 
 #include "gfx.h"
 #include "gfx_math.h"
+#include "stdlib.h"
 
 struct Model
 {
@@ -16,4 +17,17 @@ struct Model
 
     const int num_faces;
     const Tri *faces;
+
+    Vec3 *cam_projected_points;
+    Vec3 *screen_points;
+
+    void allocate_enough()
+    {
+        cam_projected_points = (Vec3 *)malloc(sizeof(Vec3) * num_verts);
+        screen_points = (Vec3 *)malloc(sizeof(Vec3) * num_verts);
+    }
+    ~Model(){
+        free(cam_projected_points);
+        free(screen_points);
+    }
 };

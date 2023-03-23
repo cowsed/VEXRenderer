@@ -5,4 +5,4 @@
 #include "gfx.h"
 
 
-extern Model field_model;
+extern Model robot_lowpoly_model;

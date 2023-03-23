@@ -21,6 +21,7 @@ brain Brain;
 #include "gfx_math.h"
 #include "gfx.h"
 #include "model.h"
+#include "robot_model.h"
 
 #ifndef M_PI
 #define M_PI 3.141592
@@ -32,7 +33,6 @@ const float width = (float)(WIDTH);
 const float height = (float)(HEIGHT);
 const float aspect = width / height;
 
-const Vec3 ambientColor = {.0, .0, .0};
 const float screenGamma = 2.2; // Assume the monitor is calibrated to the sRGB color space
 const Vec3 lightColor = {1, 1, 1};
 const float lightPower = 80.0;
@@ -69,12 +69,15 @@ float depth_buffer2[HEIGHT][WIDTH];
 
 const Vec3 clear_color = {1.0, 1.0, 1.0};
 
+Model &model = field_model;
+
+Model &robot_model = robot_lowpoly_model;
+
 Vec3 reflect(Vec3 I, Vec3 N)
 {
   return I - N * 2.0f * N.Dot(I);
 }
 
-/*
 Vec3 shade_pixel(Vec3 vertPos, Vec3 normalInterp, Vec3 lightPos, Material mat)
 {
 
@@ -98,15 +101,15 @@ Vec3 shade_pixel(Vec3 vertPos, Vec3 normalInterp, Vec3 lightPos, Material mat)
     specular = pow(specAngle, mat.Ns); // shinninness
 
     // this is phong (for comparison)
-    // if (true)
-    //{
-    //  Vec3 reflectDir = reflect(lightDir * -1, normal);
-    //  specAngle = max(reflectDir.Dot(viewDir), 0.0);
-    //  // note that the exponent is different here
-    //  specular = pow(specAngle, mat.Ns / 4.0);
-    //}
+    if (true)
+    {
+      Vec3 reflectDir = reflect(lightDir * -1, normal);
+      specAngle = max(reflectDir.Dot(viewDir), 0.0);
+      // note that the exponent is different here
+      specular = pow(specAngle, mat.Ns / 4.0);
+    }
   }
-  Vec3 colorLinear = ambientColor +
+  Vec3 colorLinear = mat.ambient * 0 +
                      mat.diffuse * lambertian * lightColor * lightPower / distance +
                      mat.specular * specular * lightColor * lightPower / distance;
   // apply gamma correction (assume ambientColor, diffuseColor and specColor
@@ -115,12 +118,13 @@ Vec3 shade_pixel(Vec3 vertPos, Vec3 normalInterp, Vec3 lightPos, Material mat)
   // use the gamma corrected color in the fragment
   return colorGammaCorrected;
 }
-*/
 
 inline void fill_tri(Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, uint32_t color_buf[HEIGHT][WIDTH], float depth_buf[HEIGHT][WIDTH])
 {
 
-  Vec3 maybe_mid = {(m.verts[m.faces[i].v1_index].x + m.verts[m.faces[i].v2_index].x + m.verts[m.faces[i].v3_index].x) / 3.f, (m.verts[m.faces[i].v1_index].y + m.verts[m.faces[i].v2_index].y + m.verts[m.faces[i].v3_index].y) / 3.f, (m.verts[m.faces[i].v1_index].z + m.verts[m.faces[i].v2_index].z + m.verts[m.faces[i].v3_index].z) / 3.f};
+  Vec3 maybe_mid = {(m.cam_projected_points[m.faces[i].v1_index].x + m.cam_projected_points[m.faces[i].v2_index].x + m.cam_projected_points[m.faces[i].v3_index].x) / 3.f,
+                    (m.cam_projected_points[m.faces[i].v1_index].y + m.cam_projected_points[m.faces[i].v2_index].y + m.cam_projected_points[m.faces[i].v3_index].y) / 3.f,
+                    (m.cam_projected_points[m.faces[i].v1_index].z + m.cam_projected_points[m.faces[i].v2_index].z + m.cam_projected_points[m.faces[i].v3_index].z) / 3.f};
 
   // pre-compute 1 over z
   v1.z = 1 / v1.z;
@@ -154,9 +158,9 @@ inline void fill_tri(Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, uint32_t color_
 
   const float amb = .2;
 
-  const Vec3 pre_col = mat.diffuse * (amb + (1 - amb) * my_clamp(world_normal.Dot(light_dir), 0.0, 1.0)); // shade_pixel(maybe_mid, world_normal, light_pos, mat);
+  const Vec3 pre_col = mat.diffuse * (amb + (1 - amb) * my_clamp(world_normal.Dot(light_dir), 0, 1.0)); // shade_pixel(maybe_mid, world_normal, light_pos, mat);
   const Vec3 col = {powf(pre_col.r, 1 / screenGamma), powf(pre_col.g, 1 / screenGamma), powf(pre_col.b, 1 / screenGamma)};
-
+  // const Vec3 col = shade_pixel(maybe_mid, world_normal, light_pos, m.materials[m.faces[i].matID]);
   for (int y = miny; y < maxy; y += 1)
   {
     for (int x = minx; x < maxx; x += 1)
@@ -211,34 +215,18 @@ double projection_time;
 double clear_time;
 double blit_time;
 
-Vec3 *screen_points;
-Vec3 *cam_projected_points;
-
-void render(Model &m, uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH], double x, double y, double z)
+void render(Model &m, uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH], const Mat4 view, const Mat4 model)
 {
 
-  vex::timer thing_tmr;
-  thing_tmr.reset();
-  clear_buffers(color, depth);
-  clear_time = thing_tmr.time(msec);
   // Project all the points to screen space
-  thing_tmr.reset();
-
-  Mat4 trans = Translate3D({0, -0, (float)(-10.0) * (float)z});
-  const Mat4 rotx = RotateX(y);
-  const Mat4 roty = RotateY(x);
-  const Mat4 move = Translate3D(focus_point * -1);
-  Mat4 transform = (trans * rotx * roty * move);
-
-  // std::cerr << "transform:\n"
-  // 		  << transform << std::endl;
+  Mat4 transform = (view * model);
 
   for (int i = 0; i < m.num_verts; i++)
   {
     Vec4 p = m.verts[i].toVec4(1.0);
 
     Vec4 p_cam = transform.Mul4xV4(p);
-    cam_projected_points[i] = p_cam.toVec3();
+    m.cam_projected_points[i] = p_cam.toVec3();
 
     // divide by depth. things farther away are smaller
     Vec4 p_NDC = {fov * near * p_cam.x / -p_cam.z, fov * near * p_cam.y / -p_cam.z, -p_cam.z};
@@ -246,22 +234,20 @@ void render(Model &m, uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH],
     // negate Y (+1 is up in graphics, +1 is down in image)
     //  do correction for aspect ratio
     Vec3 p_screen = {p_NDC.x, -p_NDC.y * aspect, p_NDC.z};
-    screen_points[i] = p_screen;
+    m.screen_points[i] = p_screen;
   }
-  projection_time = thing_tmr.time(msec);
-  thing_tmr.reset();
 
   // Assemble triangles and color they pixels
   for (int i = 0; i < m.num_faces; i++)
   {
     const Tri t = m.faces[i];
-    const Vec3 v1 = screen_points[t.v1_index];
-    const Vec3 v2 = screen_points[t.v2_index];
-    const Vec3 v3 = screen_points[t.v3_index];
+    const Vec3 v1 = m.screen_points[t.v1_index];
+    const Vec3 v2 = m.screen_points[t.v2_index];
+    const Vec3 v3 = m.screen_points[t.v3_index];
 
     if (do_backface_culling)
     {
-      Vec3 cam_space_normal = TriNormal(cam_projected_points[t.v1_index], cam_projected_points[t.v2_index], cam_projected_points[t.v3_index]);
+      Vec3 cam_space_normal = TriNormal(m.cam_projected_points[t.v1_index], m.cam_projected_points[t.v2_index], m.cam_projected_points[t.v3_index]);
       if ((view_dir_cam_space.Dot(cam_space_normal) >= 0.1))
       {
         // backface cull this dude
@@ -277,25 +263,28 @@ void render(Model &m, uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH],
     // fill_tri_tiled(i, v1, v2, v3); // 53ms
     fill_tri(m, i, v1, v2, v3, color, depth); // 40ms 30ms when inlined
   }
-  blit_time = thing_tmr.time(msec);
 }
 
 bool show_stats = true;
 bool demo_mode = false; // if true rotate in circles
-bool pan = true;
+bool pan = false;
 
 void printTextCenteredAt(int x, int y, const char *str)
 {
   Brain.Screen.printAt(x - Brain.Screen.getStringWidth(str) / 2, y - Brain.Screen.getStringHeight(str) / 2, str);
 }
 
+Vec3 robot_pos = {0, 0, 0};
+double robot_heading = 0.0;
 void usercontrol(void)
 {
   printf("Rendering\n");
 
-  screen_points = (Vec3 *)malloc(robot_lowpoly_model.num_verts * sizeof(Vec3));
-  cam_projected_points = (Vec3 *)malloc(robot_lowpoly_model.num_verts * sizeof(Vec3));
-  precalculate(robot_lowpoly_model);
+  model.allocate_enough();
+  precalculate(model);
+
+  robot_model.allocate_enough();
+  precalculate(robot_model);
 
   // increasing number of seconds to render with
   float animation_time = 0.0;
@@ -370,8 +359,23 @@ void usercontrol(void)
     last_my = my;
 
     was_pressing = pressing;
+    clear_buffers(color_buffer1, depth_buffer1);
 
-    render(robot_lowpoly_model, color_buffer1, depth_buffer1, rx, ry, z);
+    Mat4 trans = Translate3D({0, -0, (float)(-10.0) * (float)z});
+    const Mat4 rotx = RotateX(ry);
+    const Mat4 roty = RotateY(rx);
+    const Mat4 move = Translate3D(focus_point * -1);
+
+    Mat4 view = trans * rotx * roty * move;
+
+    robot_heading += 0.07;
+    float fwd = 0.03;
+
+    robot_pos = robot_pos + RotateY(robot_heading).Mul4xV3(Vec3(0, 0, -fwd));
+    Mat4 robot_model_matrix = Translate3D(robot_pos) * RotateY(robot_heading);
+
+    render(model, color_buffer1, depth_buffer1, view, Mat4Identity());
+    render(robot_model, color_buffer1, depth_buffer1, view, robot_model_matrix);
 
     double frame_time_ms = tmr.time(timeUnits::msec);
     double frame_time_s = tmr.time(timeUnits::sec);
@@ -379,6 +383,8 @@ void usercontrol(void)
     vexDelay(16 - tmr.time());
 
     Brain.Screen.drawImageFromBuffer(&color_buffer1[0][0], (480 - WIDTH) / 2, 0, WIDTH, HEIGHT);
+
+    // left side stats
     if (show_stats)
     {
       Brain.Screen.setPenColor(vex::red);
@@ -393,51 +399,50 @@ void usercontrol(void)
       Brain.Screen.printAt(10, 120, false, "blit time: %.0f", blit_time);
       Brain.Screen.printAt(10, 140, false, "focus: %.1f, %.1f, %.1f", focus_point.x, focus_point.y, focus_point.z);
 
-      Brain.Screen.printAt(10, 170, false, "%d faces", robot_lowpoly_model.num_faces);
-      Brain.Screen.printAt(10, 190, false, "%d verts", robot_lowpoly_model.num_verts);
+      Brain.Screen.printAt(10, 170, false, "%d faces", model.num_faces + robot_model.num_faces);
+      Brain.Screen.printAt(10, 190, false, "%d verts", model.num_verts + robot_model.num_verts);
     }
 
-    Brain.Screen.setFillColor(vex::color(60, 60, 60));
-    Brain.Screen.setPenColor(vex::white);
-    Brain.Screen.drawRectangle(60 * 7, 0, 60, 60);
-    printTextCenteredAt(480 - 30, 30, "+");
-    Brain.Screen.drawRectangle(60 * 7, 60, 60, 60);
-    printTextCenteredAt(480 - 30, 90, "-");
-
-    Brain.Screen.drawRectangle(60 * 7, 120, 60, 60);
-    printTextCenteredAt(480 - 30, 150, pan ? "!trans!" : "trans");
-    Brain.Screen.drawRectangle(60 * 7, 180, 60, 60);
-    printTextCenteredAt(480 - 30, 210, pan ? "rot" : "!rot!");
-
-    if (pressing)
     {
-      if (Brain.Screen.xPosition() > 60 * 7)
+      // right side buttons
+      Brain.Screen.setFillColor(vex::color(60, 60, 60));
+      Brain.Screen.setPenColor(vex::white);
+      Brain.Screen.drawRectangle(60 * 7, 0, 60, 60);
+      printTextCenteredAt(480 - 30, 30, "+");
+      Brain.Screen.drawRectangle(60 * 7, 60, 60, 60);
+      printTextCenteredAt(480 - 30, 90, "-");
+
+      Brain.Screen.drawRectangle(60 * 7, 120, 60, 60);
+      printTextCenteredAt(480 - 30, 150, pan ? "!trans!" : "trans");
+      Brain.Screen.drawRectangle(60 * 7, 180, 60, 60);
+      printTextCenteredAt(480 - 30, 210, pan ? "rot" : "!rot!");
+
+      if (pressing)
       {
-        if (Brain.Screen.yPosition() < 60)
+        if (Brain.Screen.xPosition() > 60 * 7)
         {
-          z -= .01;
-        }
-        else if (Brain.Screen.yPosition() < 120)
-        {
-          z += .01;
-        }
-        else if (Brain.Screen.yPosition() < 180)
-        {
-          pan = true;
-        }
-        else
-        {
-          pan = false;
+          if (Brain.Screen.yPosition() < 60)
+          {
+            z -= .01;
+          }
+          else if (Brain.Screen.yPosition() < 120)
+          {
+            z += .01;
+          }
+          else if (Brain.Screen.yPosition() < 180)
+          {
+            pan = true;
+          }
+          else
+          {
+            pan = false;
+          }
         }
       }
     }
-
     Brain.Screen.render();
     animation_time += 0.02;
   }
-
-  free(cam_projected_points);
-  free(screen_points);
 
   while (1)
   {
