@@ -74,6 +74,7 @@ Vec3 reflect(Vec3 I, Vec3 N)
   return I - N * 2.0f * N.Dot(I);
 }
 
+/*
 Vec3 shade_pixel(Vec3 vertPos, Vec3 normalInterp, Vec3 lightPos, Material mat)
 {
 
@@ -114,11 +115,12 @@ Vec3 shade_pixel(Vec3 vertPos, Vec3 normalInterp, Vec3 lightPos, Material mat)
   // use the gamma corrected color in the fragment
   return colorGammaCorrected;
 }
+*/
 
-inline void fill_tri(int i, Vec3 v1, Vec3 v2, Vec3 v3, uint32_t color_buf[HEIGHT][WIDTH], float depth_buf[HEIGHT][WIDTH])
+inline void fill_tri(Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, uint32_t color_buf[HEIGHT][WIDTH], float depth_buf[HEIGHT][WIDTH])
 {
 
-  Vec3 maybe_mid = {(points[faces[i].v1_index].x + points[faces[i].v2_index].x + points[faces[i].v3_index].x) / 3.f, (points[faces[i].v1_index].y + points[faces[i].v2_index].y + points[faces[i].v3_index].y) / 3.f, (points[faces[i].v1_index].z + points[faces[i].v2_index].z + points[faces[i].v3_index].z) / 3.f};
+  Vec3 maybe_mid = {(m.verts[m.faces[i].v1_index].x + m.verts[m.faces[i].v2_index].x + m.verts[m.faces[i].v3_index].x) / 3.f, (m.verts[m.faces[i].v1_index].y + m.verts[m.faces[i].v2_index].y + m.verts[m.faces[i].v3_index].y) / 3.f, (m.verts[m.faces[i].v1_index].z + m.verts[m.faces[i].v2_index].z + m.verts[m.faces[i].v3_index].z) / 3.f};
 
   // pre-compute 1 over z
   v1.z = 1 / v1.z;
@@ -145,10 +147,10 @@ inline void fill_tri(int i, Vec3 v1, Vec3 v2, Vec3 v3, uint32_t color_buf[HEIGHT
   const int maxy = (int)min(bb_pixel.max.y + 1, HEIGHT);
 
   // We don't interpolate vertex attributes, we're filling only one tri at a time -> all this stuff is constant
-  const Vec3 world_normal = normals[i];
+  const Vec3 world_normal = m.normals[i];
   const float amt = world_normal.Dot(light_pos);
 
-  const Material mat = materials[faces[i].matID];
+  const Material mat = m.materials[m.faces[i].matID];
 
   const float amb = .2;
 
@@ -173,14 +175,14 @@ inline void fill_tri(int i, Vec3 v1, Vec3 v2, Vec3 v3, uint32_t color_buf[HEIGHT
     }
   }
 }
-void precalculate()
+void precalculate(Model &m)
 {
   // Precalculate world normals
-  for (int i = 0; i < num_faces; i++)
+  for (int i = 0; i < m.num_faces; i++)
   {
-    Tri t = faces[i];
-    Vec3 world_normal = TriNormal(points[t.v1_index], points[t.v2_index], points[t.v3_index]).Normalize(); // normals[i]; //
-    normals[i] = world_normal;
+    Tri t = m.faces[i];
+    Vec3 world_normal = TriNormal(m.verts[t.v1_index], m.verts[t.v2_index], m.verts[t.v3_index]).Normalize(); // normals[i]; //
+    m.normals[i] = world_normal;
   }
 }
 
@@ -205,14 +207,16 @@ void clear_buffers(uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH])
 
 Vec3 focus_point = {0, 1, 0};
 
-Vec3 screen_points[num_points];
-Vec3 cam_projected_points[num_points];
 double projection_time;
 double clear_time;
 double blit_time;
 
-void render(uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH], double x, double y, double z)
+Vec3 *screen_points;
+Vec3 *cam_projected_points;
+
+void render(Model &m, uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH], double x, double y, double z)
 {
+
   vex::timer thing_tmr;
   thing_tmr.reset();
   clear_buffers(color, depth);
@@ -229,9 +233,9 @@ void render(uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH], double x,
   // std::cerr << "transform:\n"
   // 		  << transform << std::endl;
 
-  for (int i = 0; i < num_points; i++)
+  for (int i = 0; i < m.num_verts; i++)
   {
-    Vec4 p = points[i].toVec4(1.0);
+    Vec4 p = m.verts[i].toVec4(1.0);
 
     Vec4 p_cam = transform.Mul4xV4(p);
     cam_projected_points[i] = p_cam.toVec3();
@@ -248,9 +252,9 @@ void render(uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH], double x,
   thing_tmr.reset();
 
   // Assemble triangles and color they pixels
-  for (int i = 0; i < num_faces; i++)
+  for (int i = 0; i < m.num_faces; i++)
   {
-    const Tri t = faces[i];
+    const Tri t = m.faces[i];
     const Vec3 v1 = screen_points[t.v1_index];
     const Vec3 v2 = screen_points[t.v2_index];
     const Vec3 v3 = screen_points[t.v3_index];
@@ -265,12 +269,13 @@ void render(uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH], double x,
       }
     }
     // remove tris with any points behind camera (really long tris will clip early but thats a sacrifice im willing to make)
-    if (v1.z < 0 || v2.z < 0 || v3.z < 0){ 
+    if (v1.z < 0 || v2.z < 0 || v3.z < 0)
+    {
       continue;
     }
 
     // fill_tri_tiled(i, v1, v2, v3); // 53ms
-    fill_tri(i, v1, v2, v3, color, depth); // 40ms 30ms when inlined
+    fill_tri(m, i, v1, v2, v3, color, depth); // 40ms 30ms when inlined
   }
   blit_time = thing_tmr.time(msec);
 }
@@ -288,7 +293,9 @@ void usercontrol(void)
 {
   printf("Rendering\n");
 
-  precalculate();
+  screen_points = (Vec3 *)malloc(robot_lowpoly_model.num_verts * sizeof(Vec3));
+  cam_projected_points = (Vec3 *)malloc(robot_lowpoly_model.num_verts * sizeof(Vec3));
+  precalculate(robot_lowpoly_model);
 
   // increasing number of seconds to render with
   float animation_time = 0.0;
@@ -364,7 +371,7 @@ void usercontrol(void)
 
     was_pressing = pressing;
 
-    render(color_buffer1, depth_buffer1, rx, ry, z);
+    render(robot_lowpoly_model, color_buffer1, depth_buffer1, rx, ry, z);
 
     double frame_time_ms = tmr.time(timeUnits::msec);
     double frame_time_s = tmr.time(timeUnits::sec);
@@ -386,8 +393,8 @@ void usercontrol(void)
       Brain.Screen.printAt(10, 120, false, "blit time: %.0f", blit_time);
       Brain.Screen.printAt(10, 140, false, "focus: %.1f, %.1f, %.1f", focus_point.x, focus_point.y, focus_point.z);
 
-      Brain.Screen.printAt(10, 170, false, "%d faces", num_faces);
-      Brain.Screen.printAt(10, 190, false, "%d verts", num_points);
+      Brain.Screen.printAt(10, 170, false, "%d faces", robot_lowpoly_model.num_faces);
+      Brain.Screen.printAt(10, 190, false, "%d verts", robot_lowpoly_model.num_verts);
     }
 
     Brain.Screen.setFillColor(vex::color(60, 60, 60));
@@ -428,6 +435,9 @@ void usercontrol(void)
     Brain.Screen.render();
     animation_time += 0.02;
   }
+
+  free(cam_projected_points);
+  free(screen_points);
 
   while (1)
   {
