@@ -39,7 +39,7 @@ struct Vec3
 		float b;
 	};
 	Vec2 toVec2();
-	float length();
+	float length() const;
 
 	Vec3 operator-(const Vec3 b) const;
 	Vec3 operator+(const Vec3 b) const;
@@ -51,7 +51,7 @@ struct Vec3
 	Vec3 RotateY(float radians) const;
 	Vec3 RotateZ(float radians) const;
 
-	Vec3 Normalize();
+	Vec3 const Normalize() const;
 	float Dot(const Vec3 b) const;
 	Vec4 toVec4(const float w) const;
 

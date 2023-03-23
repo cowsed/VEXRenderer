@@ -11,7 +11,7 @@ Vec4 Vec3::toVec4(const float w) const
 	return {x, y, z, w};
 }
 
-float Vec3::length()
+float Vec3::length() const
 {
 	return sqrt(x * x + y * y + z * z);
 }
@@ -51,7 +51,7 @@ Vec3 Vec3::RotateZ(float radians) const
 	return {x, ny, nz};
 }
 
-Vec3 Vec3::Normalize()
+Vec3 const Vec3::Normalize() const
 {
 	return (*this) / length();
 }

@@ -26,7 +26,7 @@ brain Brain;
 #define M_PI 3.141592
 #endif
 
-#define WIDTH (1 * 240)
+#define WIDTH (3 * 120)
 #define HEIGHT (1 * 240)
 const float width = (float)(WIDTH);
 const float height = (float)(HEIGHT);
@@ -38,6 +38,7 @@ const Vec3 lightColor = {1, 1, 1};
 const float lightPower = 80.0;
 
 const Vec3 light_pos = Vec3({2, 5, -2});
+const Vec3 light_dir = light_pos.Normalize();
 const float fov = 3.0; // in no units in particular. higher is 'more zoomed in'
 const float near = 1.0;
 const float far = 30.0;
@@ -68,8 +69,9 @@ float depth_buffer2[HEIGHT][WIDTH];
 
 const Vec3 clear_color = {1.0, 1.0, 1.0};
 
-Vec3 reflect(Vec3 I, Vec3 N){
-  return I - N * 2.0f *  N.Dot(I);
+Vec3 reflect(Vec3 I, Vec3 N)
+{
+  return I - N * 2.0f * N.Dot(I);
 }
 
 Vec3 shade_pixel(Vec3 vertPos, Vec3 normalInterp, Vec3 lightPos, Material mat)
@@ -87,7 +89,7 @@ Vec3 shade_pixel(Vec3 vertPos, Vec3 normalInterp, Vec3 lightPos, Material mat)
   if (lambertian > 0.0)
   {
 
-    Vec3 viewDir = ( vertPos * -1.f).Normalize();
+    Vec3 viewDir = (vertPos * -1.f).Normalize();
 
     // this is blinn phong
     Vec3 halfDir = (lightDir + viewDir).Normalize();
@@ -95,7 +97,7 @@ Vec3 shade_pixel(Vec3 vertPos, Vec3 normalInterp, Vec3 lightPos, Material mat)
     specular = pow(specAngle, mat.Ns); // shinninness
 
     // this is phong (for comparison)
-    //if (true)
+    // if (true)
     //{
     //  Vec3 reflectDir = reflect(lightDir * -1, normal);
     //  specAngle = max(reflectDir.Dot(viewDir), 0.0);
@@ -115,9 +117,8 @@ Vec3 shade_pixel(Vec3 vertPos, Vec3 normalInterp, Vec3 lightPos, Material mat)
 
 inline void fill_tri(int i, Vec3 v1, Vec3 v2, Vec3 v3, uint32_t color_buf[HEIGHT][WIDTH], float depth_buf[HEIGHT][WIDTH])
 {
-  
 
-  Vec3 maybe_mid = {(  points[faces[i].v1_index].x + points[faces[i].v2_index].x + points[faces[i].v3_index].x)/3.f, (points[faces[i].v1_index].y + points[faces[i].v2_index].y + points[faces[i].v3_index].y)/3.f, (points[faces[i].v1_index].z + points[faces[i].v2_index].z + points[faces[i].v3_index].z)/3.f};
+  Vec3 maybe_mid = {(points[faces[i].v1_index].x + points[faces[i].v2_index].x + points[faces[i].v3_index].x) / 3.f, (points[faces[i].v1_index].y + points[faces[i].v2_index].y + points[faces[i].v3_index].y) / 3.f, (points[faces[i].v1_index].z + points[faces[i].v2_index].z + points[faces[i].v3_index].z) / 3.f};
 
   // pre-compute 1 over z
   v1.z = 1 / v1.z;
@@ -139,8 +140,10 @@ inline void fill_tri(int i, Vec3 v1, Vec3 v2, Vec3 v3, uint32_t color_buf[HEIGHT
 
   const Material mat = materials[faces[i].matID];
 
-  const Vec3 col = mat.diffuse;//shade_pixel(maybe_mid, world_normal, light_pos, mat);
+  const float amb = .2;
 
+  const Vec3 pre_col = mat.diffuse * (amb + (1 - amb) * my_clamp(world_normal.Dot(light_dir), 0.0, 1.0)); // shade_pixel(maybe_mid, world_normal, light_pos, mat);
+  const Vec3 col = {pow(pre_col.r, 1 / screenGamma), pow(pre_col.g, 1 / screenGamma), pow(pre_col.b, 1 / screenGamma)};
 
   for (int y = miny; y < maxy; y += 1)
   {
@@ -249,7 +252,7 @@ void render(uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH], double x,
 }
 
 bool show_stats = true;
-bool demo_mode = true; // if true rotate in circles
+bool demo_mode = false; // if true rotate in circles
 void usercontrol(void)
 {
   printf("Rendering\n");
@@ -261,7 +264,15 @@ void usercontrol(void)
 
   double x = 0.0;
   double y = 0.0;
-  double z = 1.0;
+  double z = .95;
+
+  double dx = 0;
+  double dy = 0;
+
+  int start_x = 240;
+  int start_y = 120;
+
+  bool was_pressing = false;
 
   while (true)
   {
@@ -277,10 +288,36 @@ void usercontrol(void)
       y = .5;
       // z = 1.0;
     }
-    render(color_buffer1, depth_buffer1, x, y, z);
+
+    bool pressing = Brain.Screen.pressing();
+
+    if (pressing && !was_pressing)
+    {
+      start_x = Brain.Screen.xPosition();
+      start_y = Brain.Screen.yPosition();
+    }
+    if (pressing)
+    {
+      dx = (double)(Brain.Screen.xPosition() - start_x) / -100.0;
+      dy = (double)(Brain.Screen.yPosition() - start_y) / 100.0;
+    }
+
+    if (!pressing && was_pressing)
+    {
+      x = x + dx;
+      y = y + dy;
+      dx = 0;
+      dy = 0;
+    }
+
+    was_pressing = pressing;
+
+    render(color_buffer1, depth_buffer1, x + dx, y + dy, z);
 
     double frame_time_ms = tmr.time(timeUnits::msec);
     double frame_time_s = tmr.time(timeUnits::sec);
+
+    vexDelay(16 - tmr.time());
 
     Brain.Screen.drawImageFromBuffer(&color_buffer1[0][0], (480 - WIDTH) / 2, 0, WIDTH, HEIGHT);
     if (show_stats)
@@ -288,21 +325,43 @@ void usercontrol(void)
       Brain.Screen.setPenColor(vex::red);
       Brain.Screen.setFillColor(vex::white);
       Brain.Screen.setFont(mono15);
-      Brain.Screen.printAt(10, 40, "Backface Cull: %d", do_backface_culling);
-      Brain.Screen.printAt(10, 60, "frametime: %.0fms", frame_time_ms);
-      Brain.Screen.printAt(10, 80, "fps: %.0f", (1.0 / frame_time_s));
+      Brain.Screen.printAt(10, 40, false, "Backface Cull: %d", do_backface_culling);
+      Brain.Screen.printAt(10, 60, false, "frametime: %.0fms", frame_time_ms);
+      Brain.Screen.printAt(10, 80, false, "fps: %.0f", (1.0 / frame_time_s));
 
-      Brain.Screen.printAt(10, 100, "clear time: %.0fms", clear_time);
-      Brain.Screen.printAt(10, 120, "project time: %.0fms", projection_time);
-      Brain.Screen.printAt(10, 140, "blit time: %.0f", blit_time);
+      Brain.Screen.printAt(10, 100, false, "clear time: %.0fms", clear_time);
+      Brain.Screen.printAt(10, 120, false, "project time: %.0fms", projection_time);
+      Brain.Screen.printAt(10, 140, false, "blit time: %.0f", blit_time);
 
-      Brain.Screen.printAt(10, 170, "%d faces", num_faces);
-      Brain.Screen.printAt(10, 190, "%d verts", num_points);
+      Brain.Screen.printAt(10, 170, false, "%d faces", num_faces);
+      Brain.Screen.printAt(10, 190, false, "%d verts", num_points);
+    }
+
+    Brain.Screen.setFillColor(vex::color(60,60,60));
+    Brain.Screen.setPenColor(vex::white);
+    Brain.Screen.drawRectangle(60 * 7, 0, 60, 120);
+    Brain.Screen.printAt(30 * 15 - 7, 60 - 7, "+");
+    Brain.Screen.drawRectangle(60 * 7, 120, 60, 120);
+    Brain.Screen.printAt(30 * 15 - 7, 180 - 7, "-");
+
+
+    if (pressing)
+    {
+      if (Brain.Screen.xPosition() > 60 * 7)
+      {
+        if (Brain.Screen.yPosition() < 120)
+        {
+          z -= .01;
+        }
+        else
+        {
+          z += .01;
+        }
+      }
     }
 
     Brain.Screen.render();
-    animation_time += 0.07;
-    vexDelay(20 - tmr.time());
+    animation_time += 0.02;
   }
 
   while (1)
