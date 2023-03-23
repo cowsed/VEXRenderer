@@ -128,6 +128,16 @@ inline void fill_tri(int i, Vec3 v1, Vec3 v2, Vec3 v3, uint32_t color_buf[HEIGHT
   const Rect bb = bounding_box2d(v1.toVec2(), v2.toVec2(), v3.toVec2());
   const Rect bb_pixel = Rect{.min = NDCtoPixels(bb.min), .max = NDCtoPixels(bb.max)};
 
+  // dont even try if we're entirely off screen (good for zoomed in)
+  if (bb_pixel.min.x > WIDTH || bb_pixel.max.x < 0)
+  {
+    return;
+  }
+  if (bb_pixel.min.y > HEIGHT || bb_pixel.max.y < 0)
+  {
+    return;
+  }
+
   // indices into buffer that determine the bounding box
   const int minx = (int)max(0, bb_pixel.min.x - 1);
   const int miny = (int)max(0, bb_pixel.min.y - 1);
@@ -182,10 +192,19 @@ void clear_buffers(uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH])
     for (int x = 0; x < WIDTH; x++)
     {
       color[y][x] = clear_color.toIntColor();
+    }
+  }
+  for (int y = 0; y < HEIGHT; y++)
+  {
+    for (int x = 0; x < WIDTH; x++)
+    {
       depth[y][x] = far + 1;
     }
   }
 }
+
+Vec3 focus_point = {0, 1, 0};
+
 Vec3 screen_points[num_points];
 Vec3 cam_projected_points[num_points];
 double projection_time;
@@ -204,7 +223,8 @@ void render(uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH], double x,
   Mat4 trans = Translate3D({0, -0, (float)(-10.0) * (float)z});
   const Mat4 rotx = RotateX(y);
   const Mat4 roty = RotateY(x);
-  Mat4 transform = (trans * rotx * roty);
+  const Mat4 move = Translate3D(focus_point * -1);
+  Mat4 transform = (trans * rotx * roty * move);
 
   // std::cerr << "transform:\n"
   // 		  << transform << std::endl;
@@ -244,6 +264,10 @@ void render(uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH], double x,
         continue;
       }
     }
+    // remove tris with any points behind camera (really long tris will clip early but thats a sacrifice im willing to make)
+    if (v1.z < 0 || v2.z < 0 || v3.z < 0){ 
+      continue;
+    }
 
     // fill_tri_tiled(i, v1, v2, v3); // 53ms
     fill_tri(i, v1, v2, v3, color, depth); // 40ms 30ms when inlined
@@ -253,6 +277,13 @@ void render(uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH], double x,
 
 bool show_stats = true;
 bool demo_mode = false; // if true rotate in circles
+bool pan = true;
+
+void printTextCenteredAt(int x, int y, const char *str)
+{
+  Brain.Screen.printAt(x - Brain.Screen.getStringWidth(str) / 2, y - Brain.Screen.getStringHeight(str) / 2, str);
+}
+
 void usercontrol(void)
 {
   printf("Rendering\n");
@@ -262,9 +293,13 @@ void usercontrol(void)
   // increasing number of seconds to render with
   float animation_time = 0.0;
 
-  double x = 0.0;
-  double y = 0.0;
+  double rx = 0.0;
+  double ry = 0.0;
   double z = .95;
+
+  double tx = 0.0;
+  double ty = 0.0;
+  double tz = 0.0;
 
   double dx = 0;
   double dy = 0;
@@ -273,6 +308,9 @@ void usercontrol(void)
   int start_y = 120;
 
   bool was_pressing = false;
+
+  int last_mx = -1;
+  int last_my = -1;
 
   while (true)
   {
@@ -284,35 +322,49 @@ void usercontrol(void)
     z = my_clamp(z, 0.1, 2.0);
     if (demo_mode)
     {
-      x = animation_time;
-      y = .5;
+      rx = animation_time;
+      ry = .5;
       // z = 1.0;
     }
 
     bool pressing = Brain.Screen.pressing();
 
+    int mx = Brain.Screen.xPosition();
+    int my = Brain.Screen.yPosition();
+
     if (pressing && !was_pressing)
     {
-      start_x = Brain.Screen.xPosition();
-      start_y = Brain.Screen.yPosition();
-    }
-    if (pressing)
-    {
-      dx = (double)(Brain.Screen.xPosition() - start_x) / -100.0;
-      dy = (double)(Brain.Screen.yPosition() - start_y) / 100.0;
+      last_mx = -1;
+      last_my = -1;
     }
 
-    if (!pressing && was_pressing)
+    if (pressing)
     {
-      x = x + dx;
-      y = y + dy;
-      dx = 0;
-      dy = 0;
+      if (last_mx != -1) // skip first frame
+      {
+        if (!pan)
+        {
+          // rotate
+          rx += (mx - last_mx) / -100.0;
+          ry += (my - last_my) / 100.0;
+        }
+        else
+        {
+          // pan
+          float dx = (float)(mx - last_mx) / 100.0;
+          float dy = (float)(my - last_my) / 100.0;
+          Vec3 d_focus = (RotateY(-rx - M_PI) * RotateX(ry)).Mul4xV3(Vec3(dx, dy, 0.0));
+          focus_point = focus_point + d_focus;
+        }
+      }
     }
+
+    last_mx = mx;
+    last_my = my;
 
     was_pressing = pressing;
 
-    render(color_buffer1, depth_buffer1, x + dx, y + dy, z);
+    render(color_buffer1, depth_buffer1, rx, ry, z);
 
     double frame_time_ms = tmr.time(timeUnits::msec);
     double frame_time_s = tmr.time(timeUnits::sec);
@@ -325,37 +377,50 @@ void usercontrol(void)
       Brain.Screen.setPenColor(vex::red);
       Brain.Screen.setFillColor(vex::white);
       Brain.Screen.setFont(mono15);
-      Brain.Screen.printAt(10, 40, false, "Backface Cull: %d", do_backface_culling);
-      Brain.Screen.printAt(10, 60, false, "frametime: %.0fms", frame_time_ms);
-      Brain.Screen.printAt(10, 80, false, "fps: %.0f", (1.0 / frame_time_s));
+      Brain.Screen.printAt(10, 20, false, "Backface Cull: %d", do_backface_culling);
+      Brain.Screen.printAt(10, 40, false, "frametime: %.0fms", frame_time_ms);
+      Brain.Screen.printAt(10, 60, false, "fps: %.0f", (1.0 / frame_time_s));
 
-      Brain.Screen.printAt(10, 100, false, "clear time: %.0fms", clear_time);
-      Brain.Screen.printAt(10, 120, false, "project time: %.0fms", projection_time);
-      Brain.Screen.printAt(10, 140, false, "blit time: %.0f", blit_time);
+      Brain.Screen.printAt(10, 80, false, "clear time: %.0fms", clear_time);
+      Brain.Screen.printAt(10, 100, false, "project time: %.0fms", projection_time);
+      Brain.Screen.printAt(10, 120, false, "blit time: %.0f", blit_time);
+      Brain.Screen.printAt(10, 140, false, "focus: %.1f, %.1f, %.1f", focus_point.x, focus_point.y, focus_point.z);
 
       Brain.Screen.printAt(10, 170, false, "%d faces", num_faces);
       Brain.Screen.printAt(10, 190, false, "%d verts", num_points);
     }
 
-    Brain.Screen.setFillColor(vex::color(60,60,60));
+    Brain.Screen.setFillColor(vex::color(60, 60, 60));
     Brain.Screen.setPenColor(vex::white);
-    Brain.Screen.drawRectangle(60 * 7, 0, 60, 120);
-    Brain.Screen.printAt(30 * 15 - 7, 60 - 7, "+");
-    Brain.Screen.drawRectangle(60 * 7, 120, 60, 120);
-    Brain.Screen.printAt(30 * 15 - 7, 180 - 7, "-");
+    Brain.Screen.drawRectangle(60 * 7, 0, 60, 60);
+    printTextCenteredAt(480 - 30, 30, "+");
+    Brain.Screen.drawRectangle(60 * 7, 60, 60, 60);
+    printTextCenteredAt(480 - 30, 90, "-");
 
+    Brain.Screen.drawRectangle(60 * 7, 120, 60, 60);
+    printTextCenteredAt(480 - 30, 150, pan ? "!pan!" : "pan");
+    Brain.Screen.drawRectangle(60 * 7, 180, 60, 60);
+    printTextCenteredAt(480 - 30, 210, pan ? "rot" : "!rot!");
 
     if (pressing)
     {
       if (Brain.Screen.xPosition() > 60 * 7)
       {
-        if (Brain.Screen.yPosition() < 120)
+        if (Brain.Screen.yPosition() < 60)
         {
           z -= .01;
         }
-        else
+        else if (Brain.Screen.yPosition() < 120)
         {
           z += .01;
+        }
+        else if (Brain.Screen.yPosition() < 180)
+        {
+          pan = true;
+        }
+        else
+        {
+          pan = false;
         }
       }
     }
@@ -376,7 +441,7 @@ void usercontrol(void)
 
 void pre_auton(void)
 {
-  printf("No preauto");
+  printf("No preauto\n");
 }
 
 void autonomous(void)
