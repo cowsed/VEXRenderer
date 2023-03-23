@@ -3,6 +3,8 @@
         "chrono": "cpp",
         "cmath": "cpp",
         "iostream": "cpp",
-        "filesystem": "cpp"
+        "filesystem": "cpp",
+        "random": "cpp",
+        "limits": "cpp"
     }
 }

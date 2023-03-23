@@ -22,9 +22,22 @@ struct Vec3
 {
 	constexpr Vec3(float x, float y, float z) : x(x), y(y), z(z) {}
 	constexpr Vec3() : x(0.0), y(0.0), z(0.0) {}
-	float x;
-	float y;
-	float z;
+
+	union
+	{
+		float x;
+		float r;
+	};
+	union
+	{
+		float y;
+		float g;
+	};
+	union
+	{
+		float z;
+		float b;
+	};
 	Vec2 toVec2();
 	float length();
 
@@ -32,6 +45,8 @@ struct Vec3
 	Vec3 operator+(const Vec3 b) const;
 	Vec3 operator/(const float s) const;
 	Vec3 operator*(const float s) const;
+	Vec3 operator*(const Vec3 v) const;
+	
 
 	Vec3 RotateY(float radians) const;
 	Vec3 RotateZ(float radians) const;
@@ -39,6 +54,8 @@ struct Vec3
 	Vec3 Normalize();
 	float Dot(const Vec3 b) const;
 	Vec4 toVec4(const float w) const;
+
+	uint32_t const toIntColor() const;
 };
 struct Vec4
 {

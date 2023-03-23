@@ -1,14 +1,7 @@
 #include "gfx.h"
 
 
-Vec3 Color::toVec3()const {
-	return {r, g, b};
-}
 
-Color Vec3ToColor(const Vec3 v)
-{
-    return {.r = static_cast<float>(fabs(v.x)), .g = static_cast<float>(fabs(v.y)), .b = static_cast<float>(fabs(v.z))};
-}
 
 Vec3 TriNormal(const Vec3 &v1, const Vec3 &v2, const Vec3 &v3)
 {

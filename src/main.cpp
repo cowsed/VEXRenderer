@@ -32,8 +32,12 @@ const float width = (float)(WIDTH);
 const float height = (float)(HEIGHT);
 const float aspect = width / height;
 
-const float ambient_contrib = 0.6;
-const Vec3 light_dir = Vec3({1, 1, -1}).Normalize();
+const Vec3 ambientColor = {.0, .0, .0};
+const float screenGamma = 2.2; // Assume the monitor is calibrated to the sRGB color space
+const Vec3 lightColor = {1, 1, 1};
+const float lightPower = 80.0;
+
+const Vec3 light_pos = Vec3({2, 5, -2});
 const float fov = 3.0; // in no units in particular. higher is 'more zoomed in'
 const float near = 1.0;
 const float far = 30.0;
@@ -62,10 +66,58 @@ float depth_buffer1[HEIGHT][WIDTH];
 uint32_t color_buffer2[HEIGHT][WIDTH];
 float depth_buffer2[HEIGHT][WIDTH];
 
-const Color clear_color = {1.0, 1.0, 1.0};
+const Vec3 clear_color = {1.0, 1.0, 1.0};
+
+Vec3 reflect(Vec3 I, Vec3 N){
+  return I - N * 2.0f *  N.Dot(I);
+}
+
+Vec3 shade_pixel(Vec3 vertPos, Vec3 normalInterp, Vec3 lightPos, Material mat)
+{
+
+  Vec3 normal = normalInterp.Normalize();
+  Vec3 lightDir = lightPos - vertPos;
+  float distance = lightDir.length();
+  distance = distance * distance;
+  lightDir = lightDir.Normalize();
+
+  float lambertian = max(lightDir.Dot(normal), 0.0);
+  float specular = 0.0;
+
+  if (lambertian > 0.0)
+  {
+
+    Vec3 viewDir = ( vertPos * -1.f).Normalize();
+
+    // this is blinn phong
+    Vec3 halfDir = (lightDir + viewDir).Normalize();
+    float specAngle = max(halfDir.Dot(normal), 0.0);
+    specular = pow(specAngle, mat.Ns); // shinninness
+
+    // this is phong (for comparison)
+    //if (true)
+    //{
+    //  Vec3 reflectDir = reflect(lightDir * -1, normal);
+    //  specAngle = max(reflectDir.Dot(viewDir), 0.0);
+    //  // note that the exponent is different here
+    //  specular = pow(specAngle, mat.Ns / 4.0);
+    //}
+  }
+  Vec3 colorLinear = ambientColor +
+                     mat.diffuse * lambertian * lightColor * lightPower / distance +
+                     mat.specular * specular * lightColor * lightPower / distance;
+  // apply gamma correction (assume ambientColor, diffuseColor and specColor
+  // have been linearized, i.e. have no gamma correction in them)
+  Vec3 colorGammaCorrected = {powf(colorLinear.x, 1.0 / screenGamma), powf(colorLinear.y, 1.0 / screenGamma), powf(colorLinear.z, 1.0 / screenGamma)};
+  // use the gamma corrected color in the fragment
+  return colorGammaCorrected;
+}
 
 inline void fill_tri(int i, Vec3 v1, Vec3 v2, Vec3 v3, uint32_t color_buf[HEIGHT][WIDTH], float depth_buf[HEIGHT][WIDTH])
 {
+  
+
+  Vec3 maybe_mid = {(  points[faces[i].v1_index].x + points[faces[i].v2_index].x + points[faces[i].v3_index].x)/3.f, (points[faces[i].v1_index].y + points[faces[i].v2_index].y + points[faces[i].v3_index].y)/3.f, (points[faces[i].v1_index].z + points[faces[i].v2_index].z + points[faces[i].v3_index].z)/3.f};
 
   // pre-compute 1 over z
   v1.z = 1 / v1.z;
@@ -73,7 +125,7 @@ inline void fill_tri(int i, Vec3 v1, Vec3 v2, Vec3 v3, uint32_t color_buf[HEIGHT
   v3.z = 1 / v3.z;
 
   const Rect bb = bounding_box2d(v1.toVec2(), v2.toVec2(), v3.toVec2());
-  const Rect bb_pixel = {.min = NDCtoPixels(bb.min), .max = NDCtoPixels(bb.max)};
+  const Rect bb_pixel = Rect{.min = NDCtoPixels(bb.min), .max = NDCtoPixels(bb.max)};
 
   // indices into buffer that determine the bounding box
   const int minx = (int)max(0, bb_pixel.min.x - 1);
@@ -83,13 +135,12 @@ inline void fill_tri(int i, Vec3 v1, Vec3 v2, Vec3 v3, uint32_t color_buf[HEIGHT
 
   // We don't interpolate vertex attributes, we're filling only one tri at a time -> all this stuff is constant
   const Vec3 world_normal = normals[i];
-  const float amt = world_normal.Dot(light_dir);
+  const float amt = world_normal.Dot(light_pos);
 
   const Material mat = materials[faces[i].matID];
-  const float diff_contrib = amt * (1.0 - ambient_contrib);
 
-  const Vec3 amb = mat.diffuse.toVec3() * ambient_contrib; //{mat.diffuse.r * ambient_contrib, mat.diffuse.g * ambient_contrib, mat.diffuse.b * ambient_contrib};
-  const Vec3 dif = mat.diffuse.toVec3() * diff_contrib;
+  const Vec3 col = mat.diffuse;//shade_pixel(maybe_mid, world_normal, light_pos, mat);
+
 
   for (int y = miny; y < maxy; y += 1)
   {
@@ -102,7 +153,7 @@ inline void fill_tri(int i, Vec3 v1, Vec3 v2, Vec3 v3, uint32_t color_buf[HEIGHT
         float depth = 1 / (ti.w1 * v1.z + ti.w2 * v2.z + ti.w3 * v3.z);
         if (depth > near && depth < far && depth < depth_buf[y][x])
         {
-          color_buf[y][x] = Vec3ToColor(amb + dif).toIntColor(); // Vec3ToColor({fabs(world_normal.x), fabs(world_normal.y), fabs(world_normal.z)}); //
+          color_buf[y][x] = col.toIntColor(); // Vec3ToColor({fabs(world_normal.x), fabs(world_normal.y), fabs(world_normal.z)}); //
           depth_buf[y][x] = depth;
         }
       }
@@ -147,10 +198,10 @@ void render(uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH], double x,
   // Project all the points to screen space
   thing_tmr.reset();
 
-  Mat4 trans = Translate3D({0, -0, (float)(-10.0)*(float)z});
+  Mat4 trans = Translate3D({0, -0, (float)(-10.0) * (float)z});
   const Mat4 rotx = RotateX(y);
   const Mat4 roty = RotateY(x);
-  Mat4 transform =  (trans * rotx *  roty);
+  Mat4 transform = (trans * rotx * roty);
 
   // std::cerr << "transform:\n"
   // 		  << transform << std::endl;
@@ -197,13 +248,12 @@ void render(uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH], double x,
   blit_time = thing_tmr.time(msec);
 }
 
-controller main_controller;
-
-bool show_stats = false;
+bool show_stats = true;
 bool demo_mode = true; // if true rotate in circles
 void usercontrol(void)
 {
-  std::cout << "Rendering" << std::endl;
+  printf("Rendering\n");
+
   precalculate();
 
   // increasing number of seconds to render with
@@ -213,27 +263,19 @@ void usercontrol(void)
   double y = 0.0;
   double z = 1.0;
 
-  main_controller.ButtonA.pressed([](){show_stats = !show_stats;});
-  main_controller.ButtonB.pressed([](){demo_mode = !demo_mode;});
   while (true)
   {
 
     vex::timer tmr;
     tmr.reset();
-    Brain.Screen.clearScreen(0xFFFFFFFF);
-    float dx = main_controller.Axis1.position()/400.0;
-    float dy = main_controller.Axis2.position()/400.0;
-    float dz = main_controller.Axis3.position()/500.0;
-    x+=dx;
-    y+=dy;
 
-    z+=dz * -1.0;
+    Brain.Screen.clearScreen(0xFFFFFFFF);
     z = my_clamp(z, 0.1, 2.0);
     if (demo_mode)
     {
       x = animation_time;
-      //y = -.1;
-      //z = 1.0;
+      y = .5;
+      // z = 1.0;
     }
     render(color_buffer1, depth_buffer1, x, y, z);
 
@@ -256,11 +298,11 @@ void usercontrol(void)
 
       Brain.Screen.printAt(10, 170, "%d faces", num_faces);
       Brain.Screen.printAt(10, 190, "%d verts", num_points);
-      
     }
 
     Brain.Screen.render();
     animation_time += 0.07;
+    vexDelay(20 - tmr.time());
   }
 
   while (1)

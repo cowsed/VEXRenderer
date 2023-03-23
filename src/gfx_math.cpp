@@ -33,6 +33,10 @@ Vec3 Vec3::operator*(const float s) const
 {
 	return {x * s, y * s, z * s};
 }
+Vec3 Vec3::operator*(const Vec3 v) const
+{
+	return {x * v.x, y * v.y, z * v.z};
+}
 
 Vec3 Vec3::RotateY(float radians) const
 {
@@ -47,13 +51,9 @@ Vec3 Vec3::RotateZ(float radians) const
 	return {x, ny, nz};
 }
 
-
-
-
-
 Vec3 Vec3::Normalize()
 {
-	return (*this) /length();
+	return (*this) / length();
 }
 
 float Vec3::Dot(const Vec3 b) const
@@ -78,6 +78,16 @@ Vec3 Mat4::Mul4xV3(Vec3 v)
 	float y = X10 * v.x + X11 * v.y + X12 * v.z + X13;
 	float z = X20 * v.x + X21 * v.y + X22 * v.z + X23;
 	return {x, y, z};
+}
+
+uint32_t const Vec3::toIntColor() const
+{
+	float nr = my_clamp(r, 0, 1.0), ng = my_clamp(g, 0, 1.0), nb = my_clamp(b, 0, 1.0);
+	uint32_t ir = static_cast<uint32_t>(255.0 * r);
+	uint32_t ig = static_cast<uint32_t>(255.0 * g);
+	uint32_t ib = static_cast<uint32_t>(255.0 * b);
+
+	return 0x00000000 + (ir << 16) + (ig << 8) + (ib);
 }
 
 Vec4 Mat4::Mul4xV4(const Vec4 v) const

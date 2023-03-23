@@ -5,31 +5,8 @@
 
 const Vec3 up_vec = {0, 1, 0};
 
-struct IntColor
-{
-    uint8_t a;
-    uint8_t b;
-    uint8_t g;
-    uint8_t r;
-};
 
-struct Color
-{
-    float r;
-    float g;
-    float b;
-    Vec3 toVec3() const;
-    uint32_t const toIntColor() const
-    {
-        float nr = my_clamp(r, 0, 1.0), ng = my_clamp(g, 0, 1.0), nb = my_clamp(b, 0, 1.0);
-        uint32_t ir = static_cast<uint32_t>(255.0 * r);
-        uint32_t ig = static_cast<uint32_t>(255.0 * g);
-        uint32_t ib = static_cast<uint32_t>(255.0 * b);
 
-        return 0x00000000+(ir<<16) + (ig<<8) +(ib);
-    }
-};
-Color Vec3ToColor(const Vec3 v);
 
 // ccw ordering
 // normal calculation as such
@@ -45,9 +22,9 @@ Vec3 TriNormal(const Vec3 &v1, const Vec3 &v2, const Vec3 &v3);
 
 struct Material
 {
-    Color ambient;
-    Color diffuse;
-    Color specular;
+    Vec3 ambient;
+    Vec3 diffuse;
+    Vec3 specular;
     float Ns; // 0-1000
 };
 
