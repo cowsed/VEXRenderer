@@ -398,7 +398,7 @@ void usercontrol(void)
     printTextCenteredAt(480 - 30, 90, "-");
 
     Brain.Screen.drawRectangle(60 * 7, 120, 60, 60);
-    printTextCenteredAt(480 - 30, 150, pan ? "!pan!" : "pan");
+    printTextCenteredAt(480 - 30, 150, pan ? "!trans!" : "trans");
     Brain.Screen.drawRectangle(60 * 7, 180, 60, 60);
     printTextCenteredAt(480 - 30, 210, pan ? "rot" : "!rot!");
 
