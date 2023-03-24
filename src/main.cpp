@@ -8,7 +8,7 @@
 /*----------------------------------------------------------------------------*/
 
 #include "vex.h"
-
+#include <vector>
 using namespace vex;
 
 // A global instance of competition
@@ -22,6 +22,9 @@ brain Brain;
 #include "gfx.h"
 #include "model.h"
 #include "robot_model.h"
+
+#include <stdio.h>
+#include <stdlib.h>
 
 #ifndef M_PI
 #define M_PI 3.141592
@@ -64,14 +67,12 @@ inline Vec3 PixelToNDC(const int x, const int y)
 uint32_t color_buffer1[HEIGHT][WIDTH];
 float depth_buffer1[HEIGHT][WIDTH];
 
-uint32_t color_buffer2[HEIGHT][WIDTH];
-float depth_buffer2[HEIGHT][WIDTH];
 
 const Vec3 clear_color = {1.0, 1.0, 1.0};
 
 Model &model = field_model;
 
-Model &robot_model = robot_lowpoly_model;
+Model robot_model = robot_lowpoly_model;
 
 Vec3 reflect(Vec3 I, Vec3 N)
 {
@@ -266,18 +267,68 @@ void render(Model &m, uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH],
 }
 
 bool show_stats = true;
-bool demo_mode = false; // if true rotate in circles
 bool pan = false;
+
+float metersPerInches = 0.0254;
+float radians(float deg)
+{
+  return deg * M_PI / 180.0;
+}
+
+float degree(float rad)
+{
+  return rad / M_PI * 180.0;
+}
 
 void printTextCenteredAt(int x, int y, const char *str)
 {
   Brain.Screen.printAt(x - Brain.Screen.getStringWidth(str) / 2, y - Brain.Screen.getStringHeight(str) / 2, str);
 }
 
+Vec3 fieldToGL(Vec3 p)
+{
+  // p .z = degrees rotation
+
+  return {((144 - p.x - 70)) * metersPerInches, radians(p.z + 90), (p.y - 70) * metersPerInches};
+}
+
+std::vector<Vec3> pts = {
+    {30, 16, -90},
+    {30, 24, -90},
+    {30, 24, 135},
+    {60, 45, 135},
+    {60, 45, 65},
+};
+
+float lerp(float a, float b, float t)
+{
+  return (1 - t) * a + (t)*b;
+}
+
+float shortAngleDist(float a0, float a1) {
+    float max = M_PI*2;
+    float da = fmod((a1 - a0), max);
+    return 2*fmod(da, max) - da;
+}
+
+float lerpAngle(float a0, float a1, float t)
+{
+   return a0 + shortAngleDist(a0,a1)*t;
+}
+
+Vec3 lerpV3(Vec3 a, Vec3 b, float t)
+{
+  return {lerp(a.x, b.x, t), lerp(a.y, b.y, t), degree(lerpAngle(radians(a.z), radians(b.z), t))};
+}
+
+vex::controller main_controller;
+volatile bool accept_input = false;
+
 Vec3 robot_pos = {0, 0, 0};
 double robot_heading = 0.0;
 void usercontrol(void)
 {
+
   printf("Rendering\n");
 
   model.allocate_enough();
@@ -289,24 +340,18 @@ void usercontrol(void)
   // increasing number of seconds to render with
   float animation_time = 0.0;
 
-  double rx = 0.0;
-  double ry = 0.0;
+  double rx = -M_PI / 2;
+  double ry = M_PI / 2;
   double z = .95;
-
-  double tx = 0.0;
-  double ty = 0.0;
-  double tz = 0.0;
-
-  double dx = 0;
-  double dy = 0;
-
-  int start_x = 240;
-  int start_y = 120;
 
   bool was_pressing = false;
 
   int last_mx = -1;
   int last_my = -1;
+
+  static float path_time = 0.0;
+  main_controller.ButtonB.pressed([]()
+                                  {accept_input = !accept_input; path_time = 0; });
 
   while (true)
   {
@@ -316,12 +361,6 @@ void usercontrol(void)
 
     Brain.Screen.clearScreen(0xFFFFFFFF);
     z = my_clamp(z, 0.1, 2.0);
-    if (demo_mode)
-    {
-      rx = animation_time;
-      ry = .5;
-      // z = 1.0;
-    }
 
     bool pressing = Brain.Screen.pressing();
 
@@ -338,6 +377,9 @@ void usercontrol(void)
     {
       if (last_mx != -1) // skip first frame
       {
+        float dx = 0;
+        float dy = 0;
+
         if (!pan)
         {
           // rotate
@@ -347,8 +389,9 @@ void usercontrol(void)
         else
         {
           // pan
-          float dx = (float)(mx - last_mx) / 100.0;
-          float dy = (float)(my - last_my) / 100.0;
+          dx += (float)(mx - last_mx) / 100.0;
+          dy += (float)(my - last_my) / 100.0;
+
           Vec3 d_focus = (RotateY(-rx - M_PI) * RotateX(ry)).Mul4xV3(Vec3(dx, dy, 0.0));
           focus_point = focus_point + d_focus;
         }
@@ -357,6 +400,33 @@ void usercontrol(void)
 
     last_mx = mx;
     last_my = my;
+
+    if (main_controller.ButtonL1.pressing())
+    {
+      float dx = 0;
+      float dy = 0;
+
+      dx += main_controller.Axis4.position() / -100.0;
+      dy += main_controller.Axis3.position() / 100.0;
+      Vec3 d_focus = (RotateY(-rx - M_PI) * RotateX(ry)).Mul4xV3(Vec3(dx, dy, 0.0));
+      focus_point = focus_point + d_focus;
+    }
+
+    if (!main_controller.ButtonL1.pressing())
+    {
+
+      rx += main_controller.Axis4.position() / 200.0;
+      ry += main_controller.Axis3.position() / 200.0;
+    }
+
+    if (main_controller.ButtonUp.pressing())
+    {
+      z -= 0.01;
+    }
+    if (main_controller.ButtonDown.pressing())
+    {
+      z += 0.01;
+    }
 
     was_pressing = pressing;
     clear_buffers(color_buffer1, depth_buffer1);
@@ -368,10 +438,34 @@ void usercontrol(void)
 
     Mat4 view = trans * rotx * roty * move;
 
-    robot_heading += 0.07;
-    float fwd = 0.03;
+    path_time += 0.1;
 
-    robot_pos = robot_pos + RotateY(robot_heading).Mul4xV3(Vec3(0, 0, -fwd));
+    if (accept_input)
+    {
+      robot_heading += main_controller.Axis1.position() / 300.0;
+      float fwd = main_controller.Axis2.position() / 500.0;
+      robot_pos = robot_pos + RotateY(robot_heading).Mul4xV3(Vec3(0, 0, -fwd));
+    }
+    else
+    {
+      if ((int)path_time > pts.size() - 2)
+      {
+        robot_pos = fieldToGL(pts[pts.size() - 1]);
+        robot_pos.y = 0;
+        robot_heading = fieldToGL(pts[pts.size() - 1]).y;
+      }
+      else
+      {
+        Vec3 before_point = pts[(int)path_time];
+        Vec3 after_point = pts[(int)(path_time + 1)];
+        float t = path_time - ((float)(int)path_time);
+        robot_pos = fieldToGL(lerpV3(before_point, after_point, t));
+        robot_pos.y = 0;
+        robot_heading = fieldToGL(lerpV3(before_point, after_point, t)).y;
+      }
+    }
+    // float s = .2;
+    // Mat4{s, 0, 0, 0, 0, s, 0, 0, 0, 0, s, 0, 0, 0, 0, 1} *
     Mat4 robot_model_matrix = Translate3D(robot_pos) * RotateY(robot_heading);
 
     render(model, color_buffer1, depth_buffer1, view, Mat4Identity());
@@ -380,7 +474,7 @@ void usercontrol(void)
     double frame_time_ms = tmr.time(timeUnits::msec);
     double frame_time_s = tmr.time(timeUnits::sec);
 
-    vexDelay(16 - tmr.time());
+    vexDelay(16 - tmr.time(timeUnits::msec));
 
     Brain.Screen.drawImageFromBuffer(&color_buffer1[0][0], (480 - WIDTH) / 2, 0, WIDTH, HEIGHT);
 

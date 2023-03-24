@@ -5,6 +5,9 @@
         "iostream": "cpp",
         "filesystem": "cpp",
         "random": "cpp",
-        "limits": "cpp"
+        "limits": "cpp",
+        "*.tcc": "cpp",
+        "string": "cpp",
+        "istream": "cpp"
     }
 }
