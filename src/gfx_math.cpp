@@ -1,6 +1,26 @@
 
 #include "gfx_math.h"
 
+Vec2 Vec2::operator+(const Vec2 b) const
+{
+	return {x + b.x, y + b.y};
+}
+Vec2 Vec2::operator-(const Vec2 b) const
+{
+	return {x - b.x, y - b.y};
+}
+Vec2 Vec2::operator/(const float s) const
+{
+	return {x / s, y / s};
+}
+Vec2 Vec2::operator*(const float s) const
+{
+	return {x * s, y * s};
+}
+Vec2 operator/(const float s, const Vec2 v){
+	return {s/v.x, s/v.y};
+}
+
 Vec2 Vec3::toVec2()
 {
 	return {x, y};

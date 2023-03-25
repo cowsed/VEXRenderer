@@ -2,11 +2,9 @@
 #include "gfx_math.h"
 #include <stdint.h>
 #include <math.h>
+#include "stdio.h"
 
 const Vec3 up_vec = {0, 1, 0};
-
-
-
 
 // ccw ordering
 // normal calculation as such
@@ -15,6 +13,11 @@ struct Tri
     int v1_index;
     int v2_index;
     int v3_index;
+
+    int uv1_index;
+    int uv2_index;
+    int uv3_index;
+
     int matID;
 };
 
@@ -68,3 +71,5 @@ inline tri_info insideTri(const Vec3 &v1, const Vec3 &v2, const Vec3 &v3, const 
     bool inside = (w1 >= 0) && (w2 >= 0) && (w3 >= 0);
     return {inside, area, w1, w2, w3};
 }
+
+uint32_t get_tex(float u, float v, int w, int h, const uint32_t *tex);

@@ -44,7 +44,7 @@ const Vec3 light_pos = Vec3({2, 5, -2});
 const Vec3 light_dir = light_pos.Normalize();
 const float fov = 3.0; // in no units in particular. higher is 'more zoomed in'
 const float near = 1.0;
-const float far = 30.0;
+const float far = 50.0;
 const bool do_backface_culling = true; // seems to go faster with
 const Vec3 view_dir_cam_space = Vec3(0, 0, -1.0);
 
@@ -67,12 +67,11 @@ inline Vec3 PixelToNDC(const int x, const int y)
 uint32_t color_buffer1[HEIGHT][WIDTH];
 float depth_buffer1[HEIGHT][WIDTH];
 
+const Vec3 clear_color = {.10, .10, .10};
 
-const Vec3 clear_color = {1.0, 1.0, 1.0};
+Model &model = car_model;
 
-Model &model = field_model;
-
-Model robot_model = robot_lowpoly_model;
+// Model robot_model = robot_lowpoly_model;
 
 Vec3 reflect(Vec3 I, Vec3 N)
 {
@@ -120,12 +119,16 @@ Vec3 shade_pixel(Vec3 vertPos, Vec3 normalInterp, Vec3 lightPos, Material mat)
   return colorGammaCorrected;
 }
 
-inline void fill_tri(Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, uint32_t color_buf[HEIGHT][WIDTH], float depth_buf[HEIGHT][WIDTH])
+inline void fill_tri(Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 uv2, Vec2 uv3, uint32_t color_buf[HEIGHT][WIDTH], float depth_buf[HEIGHT][WIDTH])
 {
 
   Vec3 maybe_mid = {(m.cam_projected_points[m.faces[i].v1_index].x + m.cam_projected_points[m.faces[i].v2_index].x + m.cam_projected_points[m.faces[i].v3_index].x) / 3.f,
                     (m.cam_projected_points[m.faces[i].v1_index].y + m.cam_projected_points[m.faces[i].v2_index].y + m.cam_projected_points[m.faces[i].v3_index].y) / 3.f,
                     (m.cam_projected_points[m.faces[i].v1_index].z + m.cam_projected_points[m.faces[i].v2_index].z + m.cam_projected_points[m.faces[i].v3_index].z) / 3.f};
+
+  uv1 = uv1 / v1.z;
+  uv2 = uv2 / v2.z;
+  uv3 = uv3 / v3.z;
 
   // pre-compute 1 over z
   v1.z = 1 / v1.z;
@@ -170,10 +173,29 @@ inline void fill_tri(Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, uint32_t color_
       const tri_info ti = insideTri(v1, v2, v3, PixelToNDC(x, y));
       if (ti.inside)
       {
+
         float depth = 1 / (ti.w1 * v1.z + ti.w2 * v2.z + ti.w3 * v3.z);
+
         if (depth > near && depth < far && depth < depth_buf[y][x])
         {
-          color_buf[y][x] = col.toIntColor(); // Vec3ToColor({fabs(world_normal.x), fabs(world_normal.y), fabs(world_normal.z)}); //
+          if (mat.owns_kd)
+          {
+            Vec2 UV = (uv1 * ti.w1) + (uv2 * ti.w2) + (uv3 * ti.w3);
+            UV = UV * depth;
+
+            // printf("(%.4f, %.4f)\n", U, V);
+            uint32_t col2 = get_tex(UV.u, UV.v, m.map_kd_width, m.map_kd_height, m.map_kd);
+            // if (col2!=0xFF000000){
+            //   printf("not black");
+            // }
+
+            color_buf[y][x] = col2;
+          }
+          else
+          {
+            color_buf[y][x] = col.toIntColor(); // Vec3ToColor({fabs(world_normal.x), fabs(world_normal.y), fabs(world_normal.z)}); //
+          }
+
           depth_buf[y][x] = depth;
         }
       }
@@ -246,6 +268,10 @@ void render(Model &m, uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH],
     const Vec3 v2 = m.screen_points[t.v2_index];
     const Vec3 v3 = m.screen_points[t.v3_index];
 
+    const Vec2 uv1 = m.uvs[t.uv1_index];
+    const Vec2 uv2 = m.uvs[t.uv2_index];
+    const Vec2 uv3 = m.uvs[t.uv3_index];
+
     if (do_backface_culling)
     {
       Vec3 cam_space_normal = TriNormal(m.cam_projected_points[t.v1_index], m.cam_projected_points[t.v2_index], m.cam_projected_points[t.v3_index]);
@@ -262,7 +288,7 @@ void render(Model &m, uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH],
     }
 
     // fill_tri_tiled(i, v1, v2, v3); // 53ms
-    fill_tri(m, i, v1, v2, v3, color, depth); // 40ms 30ms when inlined
+    fill_tri(m, i, v1, v2, v3, uv1, uv2, uv3, color, depth); // 40ms 30ms when inlined
   }
 }
 
@@ -292,28 +318,21 @@ Vec3 fieldToGL(Vec3 p)
   return {((144 - p.x - 70)) * metersPerInches, radians(p.z + 90), (p.y - 70) * metersPerInches};
 }
 
-std::vector<Vec3> pts = {
-    {30, 16, -90},
-    {30, 24, -90},
-    {30, 24, 135},
-    {60, 45, 135},
-    {60, 45, 65},
-};
-
 float lerp(float a, float b, float t)
 {
   return (1 - t) * a + (t)*b;
 }
 
-float shortAngleDist(float a0, float a1) {
-    float max = M_PI*2;
-    float da = fmod((a1 - a0), max);
-    return 2*fmod(da, max) - da;
+float shortAngleDist(float a0, float a1)
+{
+  float max = M_PI * 2;
+  float da = fmod((a1 - a0), max);
+  return 2 * fmod(da, max) - da;
 }
 
 float lerpAngle(float a0, float a1, float t)
 {
-   return a0 + shortAngleDist(a0,a1)*t;
+  return a0 + shortAngleDist(a0, a1) * t;
 }
 
 Vec3 lerpV3(Vec3 a, Vec3 b, float t)
@@ -322,7 +341,6 @@ Vec3 lerpV3(Vec3 a, Vec3 b, float t)
 }
 
 vex::controller main_controller;
-volatile bool accept_input = false;
 
 Vec3 robot_pos = {0, 0, 0};
 double robot_heading = 0.0;
@@ -333,9 +351,6 @@ void usercontrol(void)
 
   model.allocate_enough();
   precalculate(model);
-
-  robot_model.allocate_enough();
-  precalculate(robot_model);
 
   // increasing number of seconds to render with
   float animation_time = 0.0;
@@ -350,8 +365,6 @@ void usercontrol(void)
   int last_my = -1;
 
   static float path_time = 0.0;
-  main_controller.ButtonB.pressed([]()
-                                  {accept_input = !accept_input; path_time = 0; });
 
   while (true)
   {
@@ -359,8 +372,9 @@ void usercontrol(void)
     vex::timer tmr;
     tmr.reset();
 
-    Brain.Screen.clearScreen(0xFFFFFFFF);
-    z = my_clamp(z, 0.1, 2.0);
+    Brain.Screen.clearScreen(clear_color.toIntColor());
+    clear_time = tmr.time(msec);
+    z = my_clamp(z, 0.1, 3.0);
 
     bool pressing = Brain.Screen.pressing();
 
@@ -440,41 +454,20 @@ void usercontrol(void)
 
     path_time += 0.1;
 
-    if (accept_input)
-    {
-      robot_heading += main_controller.Axis1.position() / 300.0;
-      float fwd = main_controller.Axis2.position() / 500.0;
-      robot_pos = robot_pos + RotateY(robot_heading).Mul4xV3(Vec3(0, 0, -fwd));
-    }
-    else
-    {
-      if ((int)path_time > pts.size() - 2)
-      {
-        robot_pos = fieldToGL(pts[pts.size() - 1]);
-        robot_pos.y = 0;
-        robot_heading = fieldToGL(pts[pts.size() - 1]).y;
-      }
-      else
-      {
-        Vec3 before_point = pts[(int)path_time];
-        Vec3 after_point = pts[(int)(path_time + 1)];
-        float t = path_time - ((float)(int)path_time);
-        robot_pos = fieldToGL(lerpV3(before_point, after_point, t));
-        robot_pos.y = 0;
-        robot_heading = fieldToGL(lerpV3(before_point, after_point, t)).y;
-      }
-    }
+    robot_heading += main_controller.Axis1.position() / 300.0;
+    float fwd = main_controller.Axis2.position() / 500.0;
+    robot_pos = robot_pos + RotateY(robot_heading).Mul4xV3(Vec3(0, 0, -fwd));
     // float s = .2;
     // Mat4{s, 0, 0, 0, 0, s, 0, 0, 0, 0, s, 0, 0, 0, 0, 1} *
     Mat4 robot_model_matrix = Translate3D(robot_pos) * RotateY(robot_heading);
 
     render(model, color_buffer1, depth_buffer1, view, Mat4Identity());
-    render(robot_model, color_buffer1, depth_buffer1, view, robot_model_matrix);
+    // render(robot_model, color_buffer1, depth_buffer1, view, robot_model_matrix);
 
     double frame_time_ms = tmr.time(timeUnits::msec);
     double frame_time_s = tmr.time(timeUnits::sec);
 
-    vexDelay(16 - tmr.time(timeUnits::msec));
+    // vexDelay(16 - tmr.time(timeUnits::msec));
 
     Brain.Screen.drawImageFromBuffer(&color_buffer1[0][0], (480 - WIDTH) / 2, 0, WIDTH, HEIGHT);
 
@@ -493,8 +486,8 @@ void usercontrol(void)
       Brain.Screen.printAt(10, 120, false, "blit time: %.0f", blit_time);
       Brain.Screen.printAt(10, 140, false, "focus: %.1f, %.1f, %.1f", focus_point.x, focus_point.y, focus_point.z);
 
-      Brain.Screen.printAt(10, 170, false, "%d faces", model.num_faces + robot_model.num_faces);
-      Brain.Screen.printAt(10, 190, false, "%d verts", model.num_verts + robot_model.num_verts);
+      Brain.Screen.printAt(10, 170, false, "%d faces", model.num_faces); // + robot_model.num_faces);
+      Brain.Screen.printAt(10, 190, false, "%d verts", model.num_verts); // + robot_model.num_verts);
     }
 
     {

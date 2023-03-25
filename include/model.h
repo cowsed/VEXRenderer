@@ -5,4 +5,4 @@
 #include "gfx.h"
 
 
-extern Model field_model;
+extern Model car_model;

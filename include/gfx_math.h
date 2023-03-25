@@ -10,9 +10,23 @@ struct Vec2
 {
 	constexpr Vec2(float x, float y) : x(x), y(y) {}
 	constexpr Vec2() : x(0.0), y(0.0) {}
-	float x;
-	float y;
+	union
+	{
+		float x;
+		float u;
+	};
+	union
+	{
+		float y;
+		float v;
+	};
+
+	Vec2 operator-(const Vec2 b) const;
+	Vec2 operator+(const Vec2 b) const;
+	Vec2 operator/(const float s) const;
+	Vec2 operator*(const float s) const;
 };
+Vec2 operator/(const float s, const Vec2 v);
 
 struct Rect
 {
