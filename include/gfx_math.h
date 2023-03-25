@@ -8,6 +8,8 @@ struct Vec4;
 
 struct Vec2
 {
+	constexpr Vec2(float x, float y) : x(x), y(y) {}
+	constexpr Vec2() : x(0.0), y(0.0) {}
 	float x;
 	float y;
 };
@@ -46,7 +48,6 @@ struct Vec3
 	Vec3 operator/(const float s) const;
 	Vec3 operator*(const float s) const;
 	Vec3 operator*(const Vec3 v) const;
-	
 
 	Vec3 RotateY(float radians) const;
 	Vec3 RotateZ(float radians) const;

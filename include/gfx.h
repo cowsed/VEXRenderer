@@ -26,6 +26,7 @@ struct Material
     Vec3 diffuse;
     Vec3 specular;
     float Ns; // 0-1000
+    bool owns_kd;
 };
 
 /// @brief A camera represents the point that the scene is rendered from
