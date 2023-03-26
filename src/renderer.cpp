@@ -186,3 +186,13 @@ void render(const render_params &params, Model &m, RenderTarget &rt, const Mat4 
         fill_tri(params, m, i, v1, v2, v3, uv1, uv2, uv3, rt);
     }
 }
+
+
+Mat4 turntable_matrix(float x, float y, float zoom, Vec3 focus_point)
+{
+    Mat4 trans = Translate3D({0, -0, -(float)zoom});
+    const Mat4 rotx = RotateX(y);
+    const Mat4 roty = RotateY(x);
+    const Mat4 move = Translate3D(focus_point * -1);
+    return trans * rotx * roty * move;;
+}

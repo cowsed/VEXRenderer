@@ -15,7 +15,8 @@ struct RenderTarget
     float *depth_buffer;
 };
 
-struct render_params{
+struct render_params
+{
     const float fov;
     const float near;
     const float far;
@@ -24,5 +25,7 @@ struct render_params{
     const Vec3 light_pos;
     const Vec3 light_dir;
 };
+
+Mat4 turntable_matrix(float x, float y, float zoom, Vec3 focus_point);
 
 void render(const render_params &params, Model &m, RenderTarget &rt, const Mat4 view, const Mat4 model);

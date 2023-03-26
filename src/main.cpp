@@ -173,12 +173,7 @@ void usercontrol(void)
       was_pressing = pressing;
       viewport.Clear(clear_color.toIntColor(), params.far + 1);
 
-      Mat4 trans = Translate3D({0, -0, (float)(-10.0) * (float)z});
-      const Mat4 rotx = RotateX(ry);
-      const Mat4 roty = RotateY(rx);
-      const Mat4 move = Translate3D(focus_point * -1);
-
-      Mat4 view = trans * rotx * roty * move;
+      Mat4 view = turntable_matrix(rx, ry, z*10.f, focus_point);
 
       render(params, model, viewport, view, Mat4Identity());
 
