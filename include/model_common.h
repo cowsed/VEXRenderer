@@ -15,7 +15,6 @@ struct Model
     const int num_uvs;
     const Vec2 *uvs;
 
-
     const int num_normals;
     Vec3 *normals;
 
@@ -34,8 +33,19 @@ struct Model
         cam_projected_points = (Vec3 *)malloc(sizeof(Vec3) * num_verts);
         screen_points = (Vec3 *)malloc(sizeof(Vec3) * num_verts);
     }
-    ~Model(){
+    ~Model()
+    {
         free(cam_projected_points);
         free(screen_points);
+    }
+    void calculate_normals()
+    {
+        // Precalculate world normals
+        for (int i = 0; i < num_faces; i++)
+        {
+            Tri t = faces[i];
+            Vec3 world_normal = TriNormal(verts[t.v1_index], verts[t.v2_index], verts[t.v3_index]).Normalize(); // normals[i]; //
+            normals[i] = world_normal;
+        }
     }
 };

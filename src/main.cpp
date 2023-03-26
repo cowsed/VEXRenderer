@@ -20,6 +20,7 @@ brain Brain;
 
 #include "gfx_math.h"
 #include "gfx.h"
+#include "renderer.h"
 #include "model.h"
 #include "robot_model.h"
 
@@ -64,10 +65,9 @@ inline Vec3 PixelToNDC(const int x, const int y)
   return pixel_NDC;
 }
 
-uint32_t color_buffer[HEIGHT][WIDTH];
-float depth_buffer[HEIGHT][WIDTH];
-
 const Vec3 clear_color = {1.0, 1.0, 1.0};
+
+RenderTarget viewport(WIDTH, HEIGHT);
 
 Model &model = software_model;
 
@@ -119,7 +119,7 @@ Vec3 shade_pixel(Vec3 vertPos, Vec3 normalInterp, Vec3 lightPos, Material mat)
   return colorGammaCorrected;
 }
 
-inline void fill_tri(Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 uv2, Vec2 uv3, uint32_t color_buf[HEIGHT][WIDTH], float depth_buf[HEIGHT][WIDTH])
+inline void fill_tri(Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 uv2, Vec2 uv3, RenderTarget &rt)
 {
 
   Vec3 maybe_mid = {(m.cam_projected_points[m.faces[i].v1_index].x + m.cam_projected_points[m.faces[i].v2_index].x + m.cam_projected_points[m.faces[i].v3_index].x) / 3.f,
@@ -139,11 +139,11 @@ inline void fill_tri(Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 
   const Rect bb_pixel = Rect{.min = NDCtoPixels(bb.min), .max = NDCtoPixels(bb.max)};
 
   // dont even try if we're entirely off screen (good for zoomed in)
-  if (bb_pixel.min.x > WIDTH || bb_pixel.max.x < 0)
+  if (bb_pixel.min.x > rt.width || bb_pixel.max.x < 0)
   {
     return;
   }
-  if (bb_pixel.min.y > HEIGHT || bb_pixel.max.y < 0)
+  if (bb_pixel.min.y > rt.height || bb_pixel.max.y < 0)
   {
     return;
   }
@@ -176,7 +176,7 @@ inline void fill_tri(Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 
 
         float depth = 1 / (ti.w1 * v1.z + ti.w2 * v2.z + ti.w3 * v3.z);
 
-        if (depth > near && depth < far && depth < depth_buf[y][x])
+        if (depth > near && depth < far && depth < rt.depth_buffer[y * rt.width + x])
         {
           if (mat.owns_kd)
           {
@@ -189,45 +189,16 @@ inline void fill_tri(Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 
             //   printf("not black");
             // }
 
-            color_buf[y][x] = col2;
+            rt.color_buffer[y * rt.width + x] = col2;
           }
           else
           {
-            color_buf[y][x] = col.toIntColor(); // Vec3ToColor({fabs(world_normal.x), fabs(world_normal.y), fabs(world_normal.z)}); //
+            rt.color_buffer[y * rt.width + x] = col.toIntColor(); // Vec3ToColor({fabs(world_normal.x), fabs(world_normal.y), fabs(world_normal.z)}); //
           }
 
-          depth_buf[y][x] = depth;
+          rt.depth_buffer[y * rt.width + x] = depth;
         }
       }
-    }
-  }
-}
-void precalculate(Model &m)
-{
-  // Precalculate world normals
-  for (int i = 0; i < m.num_faces; i++)
-  {
-    Tri t = m.faces[i];
-    Vec3 world_normal = TriNormal(m.verts[t.v1_index], m.verts[t.v2_index], m.verts[t.v3_index]).Normalize(); // normals[i]; //
-    m.normals[i] = world_normal;
-  }
-}
-
-void clear_buffers(uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH])
-{
-  // Clear all pixels
-  for (int y = 0; y < HEIGHT; y++)
-  {
-    for (int x = 0; x < WIDTH; x++)
-    {
-      color[y][x] = clear_color.toIntColor();
-    }
-  }
-  for (int y = 0; y < HEIGHT; y++)
-  {
-    for (int x = 0; x < WIDTH; x++)
-    {
-      depth[y][x] = far + 1;
     }
   }
 }
@@ -238,7 +209,7 @@ double projection_time;
 double clear_time;
 double blit_time;
 
-void render(Model &m, uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH], const Mat4 view, const Mat4 model)
+void render(Model &m, RenderTarget &rt, const Mat4 view, const Mat4 model)
 {
 
   // Project all the points to screen space
@@ -288,7 +259,7 @@ void render(Model &m, uint32_t color[HEIGHT][WIDTH], float depth[HEIGHT][WIDTH],
     }
 
     // fill_tri_tiled(i, v1, v2, v3); // 53ms
-    fill_tri(m, i, v1, v2, v3, uv1, uv2, uv3, color, depth); // 40ms 30ms when inlined
+    fill_tri(m, i, v1, v2, v3, uv1, uv2, uv3, rt); // 40ms 30ms when inlined
   }
 }
 
@@ -351,7 +322,7 @@ void usercontrol(void)
   printf("Rendering\n");
 
   model.allocate_enough();
-  precalculate(model);
+  model.calculate_normals();
 
   // increasing number of seconds to render with
   float animation_time = 0.0;
@@ -443,12 +414,13 @@ void usercontrol(void)
       z += 0.01;
     }
 
-    if (demo_mode){
-      rx+=0.05;
+    if (demo_mode)
+    {
+      rx += 0.05;
     }
 
     was_pressing = pressing;
-    clear_buffers(color_buffer, depth_buffer);
+    viewport.Clear(clear_color.toIntColor(), far + 1);
 
     Mat4 trans = Translate3D({0, -0, (float)(-10.0) * (float)z});
     const Mat4 rotx = RotateX(ry);
@@ -466,14 +438,13 @@ void usercontrol(void)
     // Mat4{s, 0, 0, 0, 0, s, 0, 0, 0, 0, s, 0, 0, 0, 0, 1} *
     Mat4 robot_model_matrix = Translate3D(robot_pos) * RotateY(robot_heading);
 
-    render(model, color_buffer, depth_buffer, view, Mat4Identity());
+    render(model, viewport, view, Mat4Identity());
     // render(robot_model, color_buffer, depth_buffer, view, robot_model_matrix);
 
     double frame_time_ms = tmr.time(timeUnits::msec);
     double frame_time_s = tmr.time(timeUnits::sec);
 
-
-    Brain.Screen.drawImageFromBuffer(&color_buffer[0][0], (480 - WIDTH) / 2, 0, WIDTH, HEIGHT);
+    Brain.Screen.drawImageFromBuffer(viewport.color_buffer, (480 - WIDTH) / 2, 0, WIDTH, HEIGHT);
 
     // left side stats
     if (show_stats)
