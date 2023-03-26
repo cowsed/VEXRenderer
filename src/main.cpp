@@ -64,12 +64,12 @@ inline Vec3 PixelToNDC(const int x, const int y)
   return pixel_NDC;
 }
 
-uint32_t color_buffer1[HEIGHT][WIDTH];
-float depth_buffer1[HEIGHT][WIDTH];
+uint32_t color_buffer[HEIGHT][WIDTH];
+float depth_buffer[HEIGHT][WIDTH];
 
-const Vec3 clear_color = {.10, .10, .10};
+const Vec3 clear_color = {1.0, 1.0, 1.0};
 
-Model &model = car_model;
+Model &model = software_model;
 
 // Model robot_model = robot_lowpoly_model;
 
@@ -344,6 +344,7 @@ vex::controller main_controller;
 
 Vec3 robot_pos = {0, 0, 0};
 double robot_heading = 0.0;
+bool demo_mode = true;
 void usercontrol(void)
 {
 
@@ -442,8 +443,12 @@ void usercontrol(void)
       z += 0.01;
     }
 
+    if (demo_mode){
+      rx+=0.05;
+    }
+
     was_pressing = pressing;
-    clear_buffers(color_buffer1, depth_buffer1);
+    clear_buffers(color_buffer, depth_buffer);
 
     Mat4 trans = Translate3D({0, -0, (float)(-10.0) * (float)z});
     const Mat4 rotx = RotateX(ry);
@@ -461,15 +466,14 @@ void usercontrol(void)
     // Mat4{s, 0, 0, 0, 0, s, 0, 0, 0, 0, s, 0, 0, 0, 0, 1} *
     Mat4 robot_model_matrix = Translate3D(robot_pos) * RotateY(robot_heading);
 
-    render(model, color_buffer1, depth_buffer1, view, Mat4Identity());
-    // render(robot_model, color_buffer1, depth_buffer1, view, robot_model_matrix);
+    render(model, color_buffer, depth_buffer, view, Mat4Identity());
+    // render(robot_model, color_buffer, depth_buffer, view, robot_model_matrix);
 
     double frame_time_ms = tmr.time(timeUnits::msec);
     double frame_time_s = tmr.time(timeUnits::sec);
 
-    // vexDelay(16 - tmr.time(timeUnits::msec));
 
-    Brain.Screen.drawImageFromBuffer(&color_buffer1[0][0], (480 - WIDTH) / 2, 0, WIDTH, HEIGHT);
+    Brain.Screen.drawImageFromBuffer(&color_buffer[0][0], (480 - WIDTH) / 2, 0, WIDTH, HEIGHT);
 
     // left side stats
     if (show_stats)
@@ -478,7 +482,7 @@ void usercontrol(void)
       Brain.Screen.setFillColor(vex::white);
       Brain.Screen.setFont(mono15);
       Brain.Screen.printAt(10, 20, false, "Backface Cull: %d", do_backface_culling);
-      Brain.Screen.printAt(10, 40, false, "frametime: %.0fms", frame_time_ms);
+      Brain.Screen.printAt(10, 40, false, "render time: %.0fms", frame_time_ms);
       Brain.Screen.printAt(10, 60, false, "fps: %.0f", (1.0 / frame_time_s));
 
       Brain.Screen.printAt(10, 80, false, "clear time: %.0fms", clear_time);
@@ -527,6 +531,7 @@ void usercontrol(void)
         }
       }
     }
+    vexDelay(20 - tmr.time());
     Brain.Screen.render();
     animation_time += 0.02;
   }
