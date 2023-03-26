@@ -1,39 +1,28 @@
+#include "math.h"
 #include "gfx.h"
 #include "gfx_math.h"
+#include "model_common.h"
 #include "stdlib.h"
 struct RenderTarget
 {
-    RenderTarget(int width, int height) : width(width), height(height)
-    {
-        color_buffer = (uint32_t *)malloc(sizeof(uint32_t) * width * height);
-        depth_buffer = (float *)malloc(sizeof(float) * width * height);
-    }
-    ~RenderTarget()
-    {
-        free(color_buffer);
-        free(depth_buffer);
-    }
-    void Clear(uint32_t col, float depth)
-    {
+    RenderTarget(int width, int height);
+    ~RenderTarget();
 
-        // Clear all pixels
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                color_buffer[y * width + x] = col;
-            }
-        }
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                depth_buffer[y * width + x] = depth;
-            }
-        }
-    }
+    void Clear(uint32_t col, float depth);
     const int width;
     const int height;
     uint32_t *color_buffer;
     float *depth_buffer;
 };
+
+struct render_params{
+    const float fov;
+    const float near;
+    const float far;
+    const bool do_backface_culling;
+    const float screen_gamma;
+    const Vec3 light_pos;
+    const Vec3 light_dir;
+};
+
+void render(const render_params &params, Model &m, RenderTarget &rt, const Mat4 view, const Mat4 model);

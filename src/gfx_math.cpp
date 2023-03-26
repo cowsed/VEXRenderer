@@ -21,6 +21,10 @@ Vec2 operator/(const float s, const Vec2 v){
 	return {s/v.x, s/v.y};
 }
 
+Vec2 operator*(const float s, const Vec2 v){
+	return {s*v.x, s*v.y};
+}
+
 Vec2 Vec3::toVec2()
 {
 	return {x, y};

@@ -48,4 +48,9 @@ struct Model
             normals[i] = world_normal;
         }
     }
+    void init()
+    {
+        allocate_enough();
+        calculate_normals();
+    }
 };

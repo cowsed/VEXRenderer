@@ -27,6 +27,7 @@ struct Vec2
 	Vec2 operator*(const float s) const;
 };
 Vec2 operator/(const float s, const Vec2 v);
+Vec2 operator*(const float s, const Vec2 v);
 
 struct Rect
 {

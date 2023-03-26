@@ -72,4 +72,4 @@ inline tri_info insideTri(const Vec3 &v1, const Vec3 &v2, const Vec3 &v3, const 
     return {inside, area, w1, w2, w3};
 }
 
-uint32_t get_tex(float u, float v, int w, int h, const uint32_t *tex);
+Vec3 get_tex(float u, float v, int w, int h, const uint32_t *tex);
