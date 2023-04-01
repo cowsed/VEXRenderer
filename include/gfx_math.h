@@ -2,6 +2,7 @@
 #include <iostream>
 #include "math.h"
 
+
 struct Vec2;
 struct Vec3;
 struct Vec4;
@@ -104,6 +105,40 @@ Mat4 RotateZ(const float rad);
 
 std::ostream &operator<<(std::ostream &os, const Mat4 &m);
 
-float min(float a, float b);
-float max(float a, float b);
-float my_clamp(float v, float min, float max);
+
+inline float min(float a, float b)
+{
+	if (a < b)
+	{
+		return a;
+	}
+	else
+	{
+		return b;
+	}
+}
+inline float max(float a, float b)
+{
+	if (a > b)
+	{
+		return a;
+	}
+	else
+	{
+		return b;
+	}
+}
+
+
+inline float my_clamp(float v, float min, float max)
+{
+	if (v < min)
+	{
+		return min;
+	}
+	else if (v > max)
+	{
+		return max;
+	}
+	return v;
+}

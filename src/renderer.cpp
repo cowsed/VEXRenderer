@@ -34,26 +34,21 @@ void RenderTarget::Clear(uint32_t col, float depth)
 // transforms from [-1, 1] to [0, Width]
 inline Vec2 NDCtoPixels(const Vec2 &v, const RenderTarget &rt)
 {
-  float newx = ((v.x / 2.0) + 0.5) * rt.width;
-  float newy = ((v.y / 2.0) + 0.5) * rt.height;
-  return {newx, newy};
+    float newx = ((v.x / 2.0) + 0.5) * rt.width;
+    float newy = ((v.y / 2.0) + 0.5) * rt.height;
+    return {newx, newy};
 }
 // pixel coordinates [0, WIDTH), [0, HEIGHT) to NDC [-1, 1], [-1, 1]
 inline Vec3 PixelToNDC(const int x, const int y, const RenderTarget &rt)
 {
-  const float xf = (float)x;
-  const float yf = (float)y;
-  Vec3 pixel_NDC = Vec3(2 * xf / rt.width - 1.0f, 2 * yf / rt.height - 1.0f, 0.0);
-  return pixel_NDC;
+    const float xf = (float)x;
+    const float yf = (float)y;
+    Vec3 pixel_NDC = Vec3(2 * xf / rt.width - 1.0f, 2 * yf / rt.height - 1.0f, 0.0);
+    return pixel_NDC;
 }
-
 
 inline void fill_tri(const render_params &params, Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 uv2, Vec2 uv3, const RenderTarget &rt)
 {
-
-    Vec3 maybe_mid = {(m.cam_projected_points[m.faces[i].v1_index].x + m.cam_projected_points[m.faces[i].v2_index].x + m.cam_projected_points[m.faces[i].v3_index].x) / 3.f,
-                      (m.cam_projected_points[m.faces[i].v1_index].y + m.cam_projected_points[m.faces[i].v2_index].y + m.cam_projected_points[m.faces[i].v3_index].y) / 3.f,
-                      (m.cam_projected_points[m.faces[i].v1_index].z + m.cam_projected_points[m.faces[i].v2_index].z + m.cam_projected_points[m.faces[i].v3_index].z) / 3.f};
 
     uv1 = uv1 / v1.z;
     uv2 = uv2 / v2.z;
@@ -85,14 +80,11 @@ inline void fill_tri(const render_params &params, Model &m, int i, Vec3 v1, Vec3
 
     // We don't interpolate vertex attributes, we're filling only one tri at a time -> all this stuff is constant
     const Vec3 world_normal = m.normals[i];
-    const float amt = world_normal.Dot(params.light_pos);
 
     const Material mat = m.materials[m.faces[i].matID];
 
     const float amb = .2;
 
-    const Vec3 pre_col = mat.diffuse * (amb + (1 - amb) * my_clamp(world_normal.Dot(params.light_dir), 0, 1.0));
-    const Vec3 col = {powf(pre_col.r, 1 / params.screen_gamma), powf(pre_col.g, 1 / params.screen_gamma), powf(pre_col.b, 1 / params.screen_gamma)};
     for (int y = miny; y < maxy; y += 1)
     {
         for (int x = minx; x < maxx; x += 1)
@@ -120,6 +112,8 @@ inline void fill_tri(const render_params &params, Model &m, int i, Vec3 v1, Vec3
                     }
                     else
                     {
+                        const Vec3 pre_col = mat.diffuse * (amb + (1 - amb) * my_clamp(world_normal.Dot(params.light_dir), 0, 1.0));
+                        const Vec3 col = {powf(pre_col.r, 1 / params.screen_gamma), powf(pre_col.g, 1 / params.screen_gamma), powf(pre_col.b, 1 / params.screen_gamma)};
                         rt.color_buffer[y * rt.width + x] = col.toIntColor();
                     }
                 }
@@ -132,7 +126,6 @@ void render(const render_params &params, Model &m, RenderTarget &rt, const Mat4 
 {
     const float aspect = (float)rt.width / (float)rt.height;
     const float fov = params.fov;
-    const float far = params.far;
     const float near = params.near;
     const bool do_backface_culling = params.do_backface_culling;
     const Vec3 view_dir_cam_space = Vec3(0, 0, -1.0);
@@ -187,12 +180,12 @@ void render(const render_params &params, Model &m, RenderTarget &rt, const Mat4 
     }
 }
 
-
 Mat4 turntable_matrix(float x, float y, float zoom, Vec3 focus_point)
 {
     Mat4 trans = Translate3D({0, -0, -(float)zoom});
     const Mat4 rotx = RotateX(y);
     const Mat4 roty = RotateY(x);
     const Mat4 move = Translate3D(focus_point * -1);
-    return trans * rotx * roty * move;;
+    return trans * rotx * roty * move;
+    ;
 }

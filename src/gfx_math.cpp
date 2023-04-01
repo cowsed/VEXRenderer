@@ -106,7 +106,6 @@ Vec3 Mat4::Mul4xV3(Vec3 v)
 
 uint32_t const Vec3::toIntColor() const
 {
-	float nr = my_clamp(r, 0, 1.0), ng = my_clamp(g, 0, 1.0), nb = my_clamp(b, 0, 1.0);
 	uint32_t ir = static_cast<uint32_t>(255.0 * r);
 	uint32_t ig = static_cast<uint32_t>(255.0 * g);
 	uint32_t ib = static_cast<uint32_t>(255.0 * b);
@@ -211,8 +210,8 @@ Mat4 RotateY(const float rad)
 }
 Mat4 RotateZ(const float rad)
 {
-	float c = cos(rad);
-	float s = sin(rad);
+	float c = cosf(rad);
+	float s = sinf(rad);
 	// clang-format off
 	return {
 		c, -s, 0, 0,
@@ -221,40 +220,4 @@ Mat4 RotateZ(const float rad)
 		0,  0, 0, 1,
 	};
 	// clang-format on
-}
-
-float min(float a, float b)
-{
-	if (a < b)
-	{
-		return a;
-	}
-	else
-	{
-		return b;
-	}
-}
-float max(float a, float b)
-{
-	if (a > b)
-	{
-		return a;
-	}
-	else
-	{
-		return b;
-	}
-}
-
-float my_clamp(float v, float min, float max)
-{
-	if (v < min)
-	{
-		return min;
-	}
-	else if (v > max)
-	{
-		return max;
-	}
-	return v;
 }

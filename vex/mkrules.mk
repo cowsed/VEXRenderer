@@ -21,11 +21,7 @@ $(BUILD)/$(PROJECT).elf: $(OBJ)
 # create binary 
 $(BUILD)/$(PROJECT).bin: $(BUILD)/$(PROJECT).elf
 	$(Q)$(OBJCOPY) -O binary $(BUILD)/$(PROJECT).elf $(BUILD)/$(PROJECT).bin
-
-# create archive
-$(BUILD)/$(PROJECTLIB).a: $(OBJ)
-	$(Q)$(ARCH) $(ARCH_FLAGS) $@ $^
-
+	$(Q)cp $(BUILD)/$(PROJECT).elf $(PROJECT).out
 # clean project
 clean:
 	$(info clean project)

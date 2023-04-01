@@ -8,6 +8,12 @@
         "limits": "cpp",
         "*.tcc": "cpp",
         "string": "cpp",
-        "istream": "cpp"
+        "istream": "cpp",
+        "algorithm": "cpp",
+        "cstdio": "cpp",
+        "exception": "cpp",
+        "optional": "cpp",
+        "new": "cpp",
+        "type_traits": "cpp"
     }
 }

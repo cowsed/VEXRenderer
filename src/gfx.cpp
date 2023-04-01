@@ -1,5 +1,4 @@
 #include "gfx.h"
-
 Vec3 TriNormal(const Vec3 &v1, const Vec3 &v2, const Vec3 &v3)
 {
 	Vec3 A = v2 - v1;
@@ -22,6 +21,7 @@ Rect bounding_box2d(const Vec2 &v0, const Vec2 &v1, const Vec2 &v2)
 		.max = {maxx, maxy}};
 }
 
+
 Vec3 get_tex(float u, float v, int w, int h, const uint32_t *tex)
 {
 	if (u >= 1 || v >= 1 || u < 0 || v < 0)
@@ -37,12 +37,27 @@ Vec3 get_tex(float u, float v, int w, int h, const uint32_t *tex)
 	int ui = (int)(u * (float)w);
 	int vi = (int)(v * (float)h);
 
-	uint32_t c =  tex[vi * w + ui];
+	uint32_t c = tex[vi * w + ui];
 
 	int r = (c >> 16) & 0xFF;
 	int g = (c >> 8) & 0xFF;
-	int b = (c) & 0xFF;
+	int b = (c)&0xFF;
 
-	return Vec3{(float)(r)/256.f, (float)(g)/256.f, (float)(b)/256.f};
-
+	return Vec3{(float)(r) / 256.f, (float)(g) / 256.f, (float)(b) / 256.f};
 }
+
+
+// float edgeFunction(const Vec3 &a, const Vec3 &b, const Vec3 &c)
+// {
+//     return (c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x);
+// }
+
+// tri_info insideTri(const Vec3 &v1, const Vec3 &v2, const Vec3 &v3, const Vec3 &pixel_NDC)
+// {
+//     float area = edgeFunction(v1, v2, v3);
+//     float w1 = edgeFunction(v2, v3, pixel_NDC) / area;
+//     float w2 = edgeFunction(v3, v1, pixel_NDC) / area;
+//     float w3 = edgeFunction(v1, v2, pixel_NDC) / area;
+//     bool inside = (w1 >= 0) && (w2 >= 0) && (w3 >= 0);
+//     return {inside, area, w1, w2, w3};
+// }

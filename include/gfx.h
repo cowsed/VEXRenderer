@@ -4,6 +4,11 @@
 #include <math.h>
 #include "stdio.h"
 
+#ifdef NEON_ACCELERATED
+#include "arm_neon.h"
+#endif
+
+
 const Vec3 up_vec = {0, 1, 0};
 
 // ccw ordering
@@ -71,5 +76,6 @@ inline tri_info insideTri(const Vec3 &v1, const Vec3 &v2, const Vec3 &v3, const 
     bool inside = (w1 >= 0) && (w2 >= 0) && (w3 >= 0);
     return {inside, area, w1, w2, w3};
 }
+
 
 Vec3 get_tex(float u, float v, int w, int h, const uint32_t *tex);

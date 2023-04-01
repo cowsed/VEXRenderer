@@ -18,11 +18,10 @@ brain Brain;
 #include <iostream>
 #include <chrono>
 
-#include "gfx_math.h"
-#include "gfx.h"
+// #include "gfx_math.h"
+// #include "gfx.h"
 #include "renderer.h"
 #include "model.h"
-#include "robot_model.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,14 +46,12 @@ const render_params params = {
 
 RenderTarget viewport(WIDTH, HEIGHT);
 
-Model &model = software_model;
+Model &model = robot_lowpoly_model;
 
 Vec3 reflect(Vec3 I, Vec3 N)
 {
   return I - N * 2.0f * N.Dot(I);
 }
-
-Vec3 focus_point = {0, 1, 0};
 
 double projection_time;
 double clear_time;
@@ -72,17 +69,19 @@ vex::controller main_controller;
 
 Vec3 robot_pos = {0, 0, 0};
 double robot_heading = 0.0;
-bool demo_mode = true;
+bool demo_mode = false;
+Vec3 focus_point = {0, .2, 0};
+
+
 void usercontrol(void)
 {
-
   printf("Rendering\n");
   model.init();
   static double full_frame_time = 0.0;
 
-  double rx = -M_PI / 2;
-  double ry = M_PI / 2;
-  double z = .95;
+  double rx = -M_PI / 4;
+  double ry = M_PI / 4;
+  double z = .15;
 
   bool was_pressing = false;
 
@@ -173,7 +172,7 @@ void usercontrol(void)
       was_pressing = pressing;
       viewport.Clear(clear_color.toIntColor(), params.far + 1);
 
-      Mat4 view = turntable_matrix(rx, ry, z*10.f, focus_point);
+      Mat4 view = turntable_matrix(rx, ry, z * 10.f, focus_point);
 
       render(params, model, viewport, view, Mat4Identity());
 
