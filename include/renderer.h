@@ -3,6 +3,8 @@
 #include "gfx_math.h"
 #include "model_common.h"
 #include "stdlib.h"
+#include "vex.h"
+
 struct RenderTarget
 {
     RenderTarget(int width, int height);
@@ -29,3 +31,4 @@ struct render_params
 Mat4 turntable_matrix(float x, float y, float zoom, Vec3 focus_point);
 
 void render(const render_params &params, Model &m, RenderTarget &rt, const Mat4 view, const Mat4 model);
+

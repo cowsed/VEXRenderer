@@ -29,7 +29,7 @@ Vec3 get_tex(float u, float v, int w, int h, const uint32_t *tex)
 		// printf("over\n");
 	}
 
-	u = my_clamp(u, 0, .9999999);
+	u = my_clamp(u, 0, .9999999); 
 	v = my_clamp(1.f - v, 0, .9999999);
 
 	// return Vec3{u * .75f, v * .75f, 0.f};

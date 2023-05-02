@@ -1,5 +1,9 @@
 
 #include "gfx_math.h"
+#include <iostream>
+#include <ostream>
+#include <math.h>
+
 
 Vec2 Vec2::operator+(const Vec2 b) const
 {
@@ -17,12 +21,27 @@ Vec2 Vec2::operator*(const float s) const
 {
 	return {x * s, y * s};
 }
-Vec2 operator/(const float s, const Vec2 v){
-	return {s/v.x, s/v.y};
+Vec2 operator/(const float s, const Vec2 v)
+{
+	return {s / v.x, s / v.y};
 }
 
-Vec2 operator*(const float s, const Vec2 v){
-	return {s*v.x, s*v.y};
+Vec2 operator*(const float s, const Vec2 v)
+{
+	return {s * v.x, s * v.y};
+}
+
+float lerpS(const float a, const float b, const float t)
+{
+	return (a * (1 - t)) + (b * t);
+}
+
+Vec2 Vec2::lerp(const Vec2 a, const Vec2 b, const float t)
+{
+	return Vec2{
+		lerpS(a.x, b.x, t),
+		lerpS(a.y, b.y, t),
+	};
 }
 
 Vec2 Vec3::toVec2()
@@ -60,6 +79,15 @@ Vec3 Vec3::operator*(const float s) const
 Vec3 Vec3::operator*(const Vec3 v) const
 {
 	return {x * v.x, y * v.y, z * v.z};
+}
+
+Vec3 Vec3::lerp(const Vec3 a, const Vec3 b, const float t)
+{
+	return Vec3{
+		lerpS(a.x, b.x, t),
+		lerpS(a.y, b.y, t),
+		lerpS(a.z, b.z, t),
+	};
 }
 
 Vec3 Vec3::RotateY(float radians) const

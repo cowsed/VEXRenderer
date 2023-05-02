@@ -67,7 +67,7 @@ inline float edgeFunction(const Vec3 &a, const Vec3 &b, const Vec3 &c)
     return (c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x);
 }
 
-inline tri_info insideTri(const Vec3 &v1, const Vec3 &v2, const Vec3 &v3, const Vec3 &pixel_NDC)
+inline const tri_info insideTri(const Vec3 &v1, const Vec3 &v2, const Vec3 &v3, const Vec3 &pixel_NDC)
 {
     float area = edgeFunction(v1, v2, v3);
     float w1 = edgeFunction(v2, v3, pixel_NDC) / area;

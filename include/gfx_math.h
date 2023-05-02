@@ -1,6 +1,7 @@
 #pragma once
-#include <iostream>
-#include "math.h"
+
+
+float lerpS(const float a, const float b, const float t);
 
 
 struct Vec2;
@@ -26,6 +27,7 @@ struct Vec2
 	Vec2 operator+(const Vec2 b) const;
 	Vec2 operator/(const float s) const;
 	Vec2 operator*(const float s) const;
+	static Vec2 lerp(const Vec2 a, const Vec2 b, const float t);
 };
 Vec2 operator/(const float s, const Vec2 v);
 Vec2 operator*(const float s, const Vec2 v);
@@ -71,6 +73,9 @@ struct Vec3
 	Vec3 const Normalize() const;
 	float Dot(const Vec3 b) const;
 	Vec4 toVec4(const float w) const;
+
+	static Vec3 lerp(const Vec3 a, const Vec3 b, const float t);
+
 
 	uint32_t const toIntColor() const;
 };

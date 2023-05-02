@@ -1,0 +1,41 @@
+#include "model.h"
+
+
+static const Vec3 verts[{{len .Verts}}] = { {{ range $index, $vert := .Verts}}{{if $index}},{{end}}{{printf "%s" $vert}}{{end}} };
+
+static const Vec2 uvs[{{len .UVs}}] = { {{ range $index, $vert := .UVs}}{{if $index}},{{end}}{{printf "%s" $vert}}{{end}} };
+
+
+static Vec3 normals[{{len .Normals}}] = {  };
+
+static const Tri faces[{{len .Faces}}] = { {{ range $index, $face := .Faces}}{{if $index}},{{end}}{{printf "%s" $face}}{{end}} };
+
+
+static const Material materials[{{len .Materials}}] = { 
+    {{ range $index, $mat := .Materials}}
+    {{if $index}},{{else}} {{end}}{{printf "%s" $mat}}{{end}}
+ };
+
+static const uint32_t Kd_img[{{len .Kd_map}}] = { {{range $index, $col := .Kd_map}}{{if $index}}, {{end}}{{printf "0x%08X" $col}}{{end}} };
+
+
+Model {{.Name}}_model = Model{
+    .num_materials = {{len .Materials}},
+    .materials = materials,
+
+    .num_verts = {{len .Verts}},
+    .verts = verts,
+
+    .num_uvs = {{len .UVs}},
+    .uvs = uvs,
+
+    .num_normals = {{len .Normals}},
+    .normals = normals,
+
+    .num_faces = {{len .Faces}},
+    .faces = faces,
+
+    .map_kd_width = {{.Kd_width}},
+    .map_kd_height = {{.Kd_height}},
+    .map_kd = Kd_img,
+};

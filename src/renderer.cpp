@@ -1,4 +1,5 @@
 #include "renderer.h"
+#include "assert.h"
 
 RenderTarget::RenderTarget(int width, int height) : width(width), height(height)
 {
@@ -35,9 +36,17 @@ void RenderTarget::Clear(uint32_t col, float depth)
 inline Vec2 NDCtoPixels(const Vec2 &v, const RenderTarget &rt)
 {
     float newx = ((v.x / 2.0) + 0.5) * rt.width;
-    float newy = ((v.y / 2.0) + 0.5) * rt.height;
+    float newy = ((-v.y / 2.0) + 0.5) * rt.height;
     return {newx, newy};
 }
+
+inline Vec3 NDCtoPixelsZ(const Vec3 &v, const RenderTarget &rt)
+{
+    float newx = ((v.x / 2.0) + 0.5) * rt.width;
+    float newy = ((v.y / 2.0) + 0.5) * rt.height;
+    return {newx, newy, v.z};
+}
+
 // pixel coordinates [0, WIDTH), [0, HEIGHT) to NDC [-1, 1], [-1, 1]
 inline Vec3 PixelToNDC(const int x, const int y, const RenderTarget &rt)
 {
@@ -47,9 +56,272 @@ inline Vec3 PixelToNDC(const int x, const int y, const RenderTarget &rt)
     return pixel_NDC;
 }
 
-inline void fill_tri(const render_params &params, Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 uv2, Vec2 uv3, const RenderTarget &rt)
+const Vec3 db_palet[] = {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {1.0, 1.0, 0.0}, {1.0, 0.0, 1.0}, {0.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
+inline void fill_tri_flat_top(const render_params &params, Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 uv2, Vec2 uv3, const RenderTarget &rt)
+{
+    // fprintf(stdout, "tri v1: %f, %f\n", v1.x, v1.y);
+    // fprintf(stdout, "tri v2: %f, %f\n", v2.x, v2.y);
+    // fprintf(stdout, "tri v3: %f, %f\n", v3.x, v3.y);
+
+    // make v1 leftmost
+    if (v1.x < v2.x)
+    {
+        // nothing to be done
+    }
+    else
+    {
+        Vec3 tv = v1;
+        Vec2 tuv = uv1;
+        v1 = v2;
+        uv1 = uv2;
+        v2 = tv;
+        uv2 = tuv;
+    }
+
+    Vec3 left = v1;
+    Vec3 right = v2;
+
+    // fprintf(stdout, "left: %f, %f\n", left.x, left.y);
+    // fprintf(stdout, "right: %f, %f\n", right.x, right.y);
+
+    int top = v1.y;
+    int bot = v3.y;
+
+    // fprintf(stdout, "top. bot = %d %d\n", top, bot);
+
+    float lx_per_y = (v3.x - v1.x) / (v3.y - v1.y);
+    float rx_per_y = (v3.x - v2.x) / (v3.y - v2.y);
+
+    float lz_per_y = (v3.z - v1.z) / (v3.y - v1.y);
+    float rz_per_y = (v3.z - v2.z) / (v3.y - v2.y);
+
+    long count = 0;
+
+    for (int y = top; y <= bot; y++)
+    {
+
+        float dz = (right.z - left.z) / (right.x - left.x);
+        float z = left.z;
+        if (left.x >= rt.width || right.x < 0)
+        {
+            goto next_y;
+        }
+        if (y < 0)
+        {
+            goto next_y;
+        }
+        if (y >= rt.height)
+        {
+            return;
+        }
+        for (int x = (int)(left.x); x <= (int)(right.x); x++)
+        {
+            z += dz;
+            if (x < 0)
+            {
+                continue;
+            }
+            if (x >= rt.width)
+            {
+                goto next_y;
+            }
+            // assert(left.x <= right.x); //, "gotta go in order man");
+            // fprintf(stdout, "%d, %d : %f %f \n", x, y, left.x, right.x);
+            if (z > params.near && z < params.far && z < rt.depth_buffer[y * rt.width + x])
+            {
+                rt.depth_buffer[y * rt.width + x] = z;
+
+                Vec3 col = db_palet[i % 7];
+                rt.color_buffer[y * rt.width + x] = col.toIntColor();
+                count++;
+            }
+
+            // vexDelay(1);
+        }
+
+    // step to next scanline
+    next_y:
+        left.x += lx_per_y;
+        right.x += rx_per_y;
+        left.z += lz_per_y;
+        right.z += rz_per_y;
+        left.y++;
+        right.y++;
+    }
+    fprintf(stdout, "top ID: %d = %d\n", i, count);
+}
+inline void fill_tri_flat_bot(const render_params &params, Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 uv2, Vec2 uv3, const RenderTarget &rt)
 {
 
+    // fprintf(stdout, "tri v1: %f, %f\n", v1.x, v1.y);
+    // fprintf(stdout, "tri v2: %f, %f\n", v2.x, v2.y);
+    // fprintf(stdout, "tri v3: %f, %f\n", v3.x, v3.y);
+
+    // make v2 leftmost
+    if (v2.x < v3.x)
+    {
+        // nothing to be done
+    }
+    else
+    {
+        Vec3 tv = v2;
+        Vec2 tuv = uv2;
+        v2 = v3;
+        uv2 = uv3;
+        v3 = tv;
+        uv3 = tuv;
+    }
+
+    int top = v1.y;
+    int bot = v3.y;
+
+    // fprintf(stdout, "top. bot = %d %d\n", top, bot);
+    // assert(top <= bot); //, "gotta go in order man");
+
+    Vec3 left = v1;
+    Vec3 right = v1;
+
+    // fprintf(stdout, "left: %f, %f\n", left.x, left.y);
+    // fprintf(stdout, "right: %f, %f\n", right.x, right.y);
+
+    float lx_per_y = (v2.x - v1.x) / (v2.y - v1.y);
+    float rx_per_y = (v3.x - v1.x) / (v3.y - v1.y);
+
+    float lz_per_y = (v2.z - v1.z) / (v2.y - v1.y);
+    float rz_per_y = (v3.z - v1.z) / (v3.y - v1.y);
+
+    long count = 0;
+
+    for (int y = top; y < bot; y++)
+    {
+        float dz = (right.z - left.z) / (right.x - left.x);
+        float z = left.z;
+        if (left.x >= rt.width || right.x < 0)
+        {
+            goto next_y;
+        }
+        if (y < 0)
+        {
+            goto next_y;
+        }
+        if (y >= rt.height)
+        {
+            return;
+        }
+        for (int x = (int)left.x; x < (int)right.x; x++)
+        {
+            if (x < 0)
+            {
+                continue;
+            }
+            if (x >= rt.width)
+            {
+                goto next_y;
+            }
+            z += dz;
+
+            if (z > params.near && z < params.far && z < rt.depth_buffer[y * rt.width + x])
+            {
+                rt.depth_buffer[y * rt.width + x] = z;
+
+                Vec3 col = db_palet[i % 7];
+                rt.color_buffer[y * rt.width + x] = col.toIntColor();
+                count++;
+            }
+        }
+    next_y:
+        left.x += lx_per_y;
+        right.x += rx_per_y;
+        left.z += lz_per_y;
+        right.z += lz_per_y;
+        left.y++;
+        right.y++;
+    }
+    fprintf(stdout, "bot ID: %d = %d\n", i, count);
+}
+
+inline void fill_tri_f(const render_params &params, Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 uv2, Vec2 uv3, const RenderTarget &rt)
+{
+    fprintf(stdout, "pre sort\n");
+    fprintf(stdout, "v1(%f, %f)\n", v1.x, v1.y);
+    fprintf(stdout, "v2(%f, %f)\n", v2.x, v2.y);
+    fprintf(stdout, "v3(%f, %f)\n", v3.x, v3.y);
+
+    // Sort by y
+    // starting from 3, move smaller things to left
+    // lesser of 3,2 goes to 2
+    if (v2.y > v3.y)
+    {
+        Vec3 tv = v2;
+        Vec2 tuv = uv2;
+        v2 = v3;
+        uv2 = uv3;
+        v3 = tv;
+        uv3 = tuv;
+    }
+    // lesser of 2, 1 goes to 1
+    if (v1.y > v2.y)
+    {
+
+        Vec3 tv = v1;
+        Vec2 tuv = uv1;
+        v1 = v2;
+        uv1 = uv2;
+        v2 = tv;
+        uv2 = tuv;
+    }
+
+    if (v2.y > v3.y)
+    {
+
+        Vec3 tv = v2;
+        Vec2 tuv = uv2;
+        v2 = v3;
+        uv2 = uv3;
+        v3 = tv;
+        uv3 = tuv;
+    }
+    fprintf(stdout, "post sort\n");
+    fprintf(stdout, "v1(%f, %f)\n", v1.x, v1.y);
+    fprintf(stdout, "v2(%f, %f)\n", v2.x, v2.y);
+    fprintf(stdout, "v3(%f, %f)\n", v3.x, v3.y);
+
+    Vec3 p1 = NDCtoPixelsZ(v1, rt);
+    Vec3 p2 = NDCtoPixelsZ(v2, rt);
+    Vec3 p3 = NDCtoPixelsZ(v3, rt);
+
+    fprintf(stdout, "is flat top: %d\n", (int)p1.y == (int)p2.y);
+    if ((int)p1.y == (int)p2.y)
+    {
+        // flat top triangle
+        fprintf(stdout, "%d is flat top\n", i);
+        fill_tri_flat_top(params, m, i, p1, p2, p3, uv1, uv2, uv3, rt);
+        return;
+    }
+
+    if ((int)p2.y == (int)p3.y)
+    {
+        // flat bottom triangle
+        fprintf(stdout, "%d is flat bot\n", i);
+        fill_tri_flat_bot(params, m, i, p1, p2, p3, uv1, uv2, uv3, rt);
+        return;
+    }
+
+    // find point along line p1-p3 that is at the y of v2
+    /* general case - split the triangle in a topflat and bottom-flat one */
+    float t = (v2.y - v1.y) / (v3.y - v1.y);
+    // if (t < 0 || t > 1){
+    assert(t >= 0 && t <= 1);
+    // }
+    Vec3 p4 = Vec3::lerp(p1, p3, t);
+    Vec2 uv4 = Vec2::lerp(uv1, uv3, t);
+
+    fill_tri_flat_bot(params, m, i, p1, p2, p4, uv1, uv2, uv4, rt);
+    fill_tri_flat_top(params, m, i, p2, p4, p3, uv2, uv4, uv3, rt);
+}
+
+inline void fill_tri(const render_params &params, Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 uv2, Vec2 uv3, const RenderTarget &rt)
+{
     uv1 = uv1 / v1.z;
     uv2 = uv2 / v2.z;
     uv3 = uv3 / v3.z;
@@ -81,7 +353,7 @@ inline void fill_tri(const render_params &params, Model &m, int i, Vec3 v1, Vec3
     // We don't interpolate vertex attributes, we're filling only one tri at a time -> all this stuff is constant
     const Vec3 world_normal = m.normals[i];
 
-    const Material mat = m.materials[m.faces[i].matID];
+    const Material &mat = m.materials[m.faces[i].matID];
 
     const float amb = .2;
 
@@ -127,7 +399,7 @@ void render(const render_params &params, Model &m, RenderTarget &rt, const Mat4 
     const float aspect = (float)rt.width / (float)rt.height;
     const float fov = params.fov;
     const float near = params.near;
-    const bool do_backface_culling = params.do_backface_culling;
+    const bool do_backface_culling = false; // params.do_backface_culling;
     const Vec3 view_dir_cam_space = Vec3(0, 0, -1.0);
 
     // Project all the points to screen space
@@ -176,7 +448,8 @@ void render(const render_params &params, Model &m, RenderTarget &rt, const Mat4 
             continue;
         }
 
-        fill_tri(params, m, i, v1, v2, v3, uv1, uv2, uv3, rt);
+        // fill_tri(params, m, i, v1, v2, v3, uv1, uv2, uv3, rt);
+        fill_tri_f(params, m, i, v1, v2, v3, uv1, uv2, uv3, rt);
     }
 }
 
