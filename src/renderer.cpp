@@ -15,7 +15,7 @@ RenderTarget::~RenderTarget()
 void RenderTarget::Clear(uint32_t col, float depth)
 {
 
-    // Clear all pixels
+    // Clear all q
     for (int y = 0; y < height; y++)
     {
         for (int x = 0; x < width; x++)
@@ -54,6 +54,11 @@ inline Vec3 PixelToNDC(const int x, const int y, const RenderTarget &rt)
     const float yf = (float)y;
     Vec3 pixel_NDC = Vec3(2 * xf / rt.width - 1.0f, 2 * yf / rt.height - 1.0f, 0.0);
     return pixel_NDC;
+}
+
+Vec3 depthToCol(float depth)
+{
+    return {depth, 0.0, 0.0};
 }
 
 const Vec3 db_palet[] = {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {1.0, 1.0, 0.0}, {1.0, 0.0, 1.0}, {0.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
@@ -132,7 +137,7 @@ inline void fill_tri_flat_top(const render_params &params, Model &m, int i, Vec3
                 rt.depth_buffer[y * rt.width + x] = z;
 
                 Vec3 col = db_palet[i % 7];
-                rt.color_buffer[y * rt.width + x] = col.toIntColor();
+                rt.color_buffer[y * rt.width + x] = depthToCol(z).toIntColor();
                 count++;
             }
 
@@ -225,7 +230,7 @@ inline void fill_tri_flat_bot(const render_params &params, Model &m, int i, Vec3
                 rt.depth_buffer[y * rt.width + x] = z;
 
                 Vec3 col = db_palet[i % 7];
-                rt.color_buffer[y * rt.width + x] = col.toIntColor();
+                rt.color_buffer[y * rt.width + x] = depthToCol(z).toIntColor();
                 count++;
             }
         }
@@ -322,6 +327,7 @@ inline void fill_tri_f(const render_params &params, Model &m, int i, Vec3 v1, Ve
 
 inline void fill_tri(const render_params &params, Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 uv2, Vec2 uv3, const RenderTarget &rt)
 {
+
     uv1 = uv1 / v1.z;
     uv2 = uv2 / v2.z;
     uv3 = uv3 / v3.z;
@@ -353,7 +359,7 @@ inline void fill_tri(const render_params &params, Model &m, int i, Vec3 v1, Vec3
     // We don't interpolate vertex attributes, we're filling only one tri at a time -> all this stuff is constant
     const Vec3 world_normal = m.normals[i];
 
-    const Material &mat = m.materials[m.faces[i].matID];
+    const Material mat = m.materials[m.faces[i].matID];
 
     const float amb = .2;
 
@@ -374,6 +380,7 @@ inline void fill_tri(const render_params &params, Model &m, int i, Vec3 v1, Vec3
 
                     if (mat.owns_kd)
                     {
+                        std::cout << "has kd" << std::endl;
                         Vec2 UV = depth * ((uv1 * ti.w1) + (uv2 * ti.w2) + (uv3 * ti.w3));
 
                         Vec3 col2 = get_tex(UV.u, UV.v, m.map_kd_width, m.map_kd_height, m.map_kd);
@@ -384,6 +391,7 @@ inline void fill_tri(const render_params &params, Model &m, int i, Vec3 v1, Vec3
                     }
                     else
                     {
+                        std::cout << "hasnt kd" << std::endl;
                         const Vec3 pre_col = mat.diffuse * (amb + (1 - amb) * my_clamp(world_normal.Dot(params.light_dir), 0, 1.0));
                         const Vec3 col = {powf(pre_col.r, 1 / params.screen_gamma), powf(pre_col.g, 1 / params.screen_gamma), powf(pre_col.b, 1 / params.screen_gamma)};
                         rt.color_buffer[y * rt.width + x] = col.toIntColor();
@@ -399,7 +407,7 @@ void render(const render_params &params, Model &m, RenderTarget &rt, const Mat4 
     const float aspect = (float)rt.width / (float)rt.height;
     const float fov = params.fov;
     const float near = params.near;
-    const bool do_backface_culling = false; // params.do_backface_culling;
+    const bool do_backface_culling = params.do_backface_culling;
     const Vec3 view_dir_cam_space = Vec3(0, 0, -1.0);
 
     // Project all the points to screen space
@@ -447,12 +455,11 @@ void render(const render_params &params, Model &m, RenderTarget &rt, const Mat4 
         {
             continue;
         }
+        fill_tri(params, m, i, v1, v2, v3, uv1, uv2, uv3, rt);
 
-        // fill_tri(params, m, i, v1, v2, v3, uv1, uv2, uv3, rt);
-        fill_tri_f(params, m, i, v1, v2, v3, uv1, uv2, uv3, rt);
+        // fill_tri_f(params, m, i, v1, v2, v3, uv1, uv2, uv3, rt);
     }
 }
-
 Mat4 turntable_matrix(float x, float y, float zoom, Vec3 focus_point)
 {
     Mat4 trans = Translate3D({0, -0, -(float)zoom});

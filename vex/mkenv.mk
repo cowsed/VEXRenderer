@@ -81,7 +81,7 @@ CFLAGS_CL =  -ggdb
 CFLAGS    = ${CFLAGS_CL} --std=gnu++20
 # -Wall -Werror=return-type
 # $(DEFINES)
-CXX_FLAGS = ${CFLAGS_CL} $(DEFINES) -stdlib=libstdc++
+CXX_FLAGS = ${CFLAGS_CL} $(DEFINES) -stdlib=libstdc++ -fno-exceptions
 
 # linker flags
 LNK_FLAGS = -pie --build-id --eh-frame-hdr -m elf_x86_64 
