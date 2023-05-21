@@ -64,9 +64,9 @@ Vec3 depthToCol(float depth)
 const Vec3 db_palet[] = {{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {1.0, 1.0, 0.0}, {1.0, 0.0, 1.0}, {0.0, 1.0, 1.0}, {.5, .5, .5}};
 inline void fill_tri_flat_top(const render_params &params, Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 uv2, Vec2 uv3, const RenderTarget &rt)
 {
-    // fprintf(stdout, "tri v1: %f, %f\n", v1.x, v1.y);
-    // fprintf(stdout, "tri v2: %f, %f\n", v2.x, v2.y);
-    // fprintf(stdout, "tri v3: %f, %f\n", v3.x, v3.y);
+    v1.z = 1.0 / v1.z;
+    v2.z = 1.0 / v2.z;
+    v3.z = 1.0 / v3.z;
 
     // make v1 leftmost
     if (v1.x < v2.x)
@@ -83,11 +83,12 @@ inline void fill_tri_flat_top(const render_params &params, Model &m, int i, Vec3
         uv2 = tuv;
     }
 
+    if (v3.y - v1.y < .5){
+        return;
+    }
+
     Vec3 left = v1;
     Vec3 right = v2;
-
-    // fprintf(stdout, "left: %f, %f\n", left.x, left.y);
-    // fprintf(stdout, "right: %f, %f\n", right.x, right.y);
 
     int top = v1.y;
     int bot = v3.y;
@@ -100,7 +101,11 @@ inline void fill_tri_flat_top(const render_params &params, Model &m, int i, Vec3
     float lz_per_y = (v3.z - v1.z) / (v3.y - v1.y);
     float rz_per_y = (v3.z - v2.z) / (v3.y - v2.y);
 
-    long count = 0;
+    const Vec3 world_normal = m.normals[i];
+
+    const Material mat = m.materials[m.faces[i].matID];
+
+    const float amb = .2;
 
     for (int y = top; y <= bot; y++)
     {
@@ -112,14 +117,14 @@ inline void fill_tri_flat_top(const render_params &params, Model &m, int i, Vec3
             goto next_y;
         }
         if (y < 0)
-        {
+        { 
             goto next_y;
         }
-        if (y >= rt.height)
+        if (y >= rt.height) 
         {
             return;
         }
-        for (int x = (int)(left.x-.5); x < (int)(right.x); x++)
+        for (int x = (int)(left.x); x < (int)(right.x); x++)
         {
             z += dz;
             if (x < 0)
@@ -130,16 +135,21 @@ inline void fill_tri_flat_top(const render_params &params, Model &m, int i, Vec3
             {
                 goto next_y;
             }
+            float depth = 1.0 / z;
             // assert(left.x <= right.x); //, "gotta go in order man");
             // fprintf(stdout, "%d, %d : %f %f \n", x, y, left.x, right.x);
-            if (z > params.near && z < params.far && z < rt.depth_buffer[y * rt.width + x])
+            if (depth > params.near && depth < params.far && depth < rt.depth_buffer[y * rt.width + x])
             {
-                rt.depth_buffer[y * rt.width + x] = z;
+                rt.depth_buffer[y * rt.width + x] = depth;
 
-                Vec3 col = db_palet[i % 7];
-                rt.color_buffer[y * rt.width + x] = col.toIntColor();
+                const Vec3 pre_col = mat.diffuse * (amb + (1 - amb) * my_clamp(world_normal.Dot(params.light_dir), 0, 1.0));
+                const Vec3 col = {powf(pre_col.r, 1 / params.screen_gamma), powf(pre_col.g, 1 / params.screen_gamma), powf(pre_col.b, 1 / params.screen_gamma)};
+                // rt.color_buffer[y * rt.width + x] = col.toIntColor();
+                        rt.color_buffer[y * rt.width + x] = depthToCol(depth).toIntColor();
+
+                // Vec3 col = db_palet[i % 7];
+                // rt.color_buffer[y * rt.width + x] = col.toIntColor();
                 // rt.color_buffer[y * rt.width + x] = (Vec3(0, 0, 0) + depthToCol(z)).toIntColor();
-                count++;
             }
 
             // vexDelay(1);
@@ -154,10 +164,12 @@ inline void fill_tri_flat_top(const render_params &params, Model &m, int i, Vec3
         left.y++;
         right.y++;
     }
-    fprintf(stdout, "top ID: %d = %d\n", i, count);
 }
 inline void fill_tri_flat_bot(const render_params &params, Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 uv2, Vec2 uv3, const RenderTarget &rt)
 {
+    v1.z = 1.0 / v1.z;
+    v2.z = 1.0 / v2.z;
+    v3.z = 1.0 / v3.z;
 
     // make v2 leftmost
     if (v2.x < v3.x)
@@ -174,15 +186,15 @@ inline void fill_tri_flat_bot(const render_params &params, Model &m, int i, Vec3
         uv3 = tuv;
     }
 
-    int top = (int)(v1.y - .5);
-    int bot = v3.y;
+    if (v3.y - v1.y < .5){
+        return;
+    }
 
+    int top = (int)(v1.y);
+    int bot = (int)(v3.y);
 
     Vec3 left = v1;
     Vec3 right = v1;
-
-    // fprintf(stdout, "left: %f, %f\n", left.x, left.y);
-    // fprintf(stdout, "right: %f, %f\n", right.x, right.y);
 
     float lx_per_y = (v2.x - v1.x) / (v2.y - v1.y);
     float rx_per_y = (v3.x - v1.x) / (v3.y - v1.y);
@@ -190,7 +202,11 @@ inline void fill_tri_flat_bot(const render_params &params, Model &m, int i, Vec3
     float lz_per_y = (v2.z - v1.z) / (v2.y - v1.y);
     float rz_per_y = (v3.z - v1.z) / (v3.y - v1.y);
 
-    long count = 0;
+    // do barycentric interpolation linearly
+
+    const Vec3 world_normal = m.normals[i];
+    const Material mat = m.materials[m.faces[i].matID];
+    const float amb = .2;
 
     for (int y = top; y < bot; y++)
     {
@@ -208,7 +224,7 @@ inline void fill_tri_flat_bot(const render_params &params, Model &m, int i, Vec3
         {
             return;
         }
-        for (int x = (int)(left.x - .5); x < (int)right.x; x++)
+        for (int x = (int)(left.x); x < (int)right.x; x++)
         {
             if (x < 0)
             {
@@ -220,14 +236,19 @@ inline void fill_tri_flat_bot(const render_params &params, Model &m, int i, Vec3
             }
             z += dz;
 
-            if (z > params.near && z < params.far && z < rt.depth_buffer[y * rt.width + x])
+            float depth = 1.0 / z;
+            if (depth > params.near && depth < params.far && depth < rt.depth_buffer[y * rt.width + x])
             {
-                rt.depth_buffer[y * rt.width + x] = z;
+                rt.depth_buffer[y * rt.width + x] = depth;
 
-                Vec3 col = db_palet[i % 7];
-                rt.color_buffer[y * rt.width + x] = col.toIntColor();
+                // Vec3 col = db_palet[i % 7];
+                // rt.color_buffer[y * rt.width + x] = col.toIntColor();
                 // rt.color_buffer[y * rt.width + x] = (Vec3(0, 0, 0) + depthToCol(z)).toIntColor();
-                count++;
+
+                const Vec3 pre_col = mat.diffuse * (amb + (1 - amb) * my_clamp(world_normal.Dot(params.light_dir), 0, 1.0));
+                const Vec3 col = {powf(pre_col.r, 1 / params.screen_gamma), powf(pre_col.g, 1 / params.screen_gamma), powf(pre_col.b, 1 / params.screen_gamma)};
+                // rt.color_buffer[y * rt.width + x] = col.toIntColor();
+                rt.color_buffer[y * rt.width + x] = depthToCol(depth).toIntColor();
             }
         }
     next_y:
@@ -238,16 +259,10 @@ inline void fill_tri_flat_bot(const render_params &params, Model &m, int i, Vec3
         left.y++;
         right.y++;
     }
-    fprintf(stdout, "bot ID: %d = %d\n", i, count);
 }
 
 inline void fill_tri_f(const render_params &params, Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 uv2, Vec2 uv3, const RenderTarget &rt)
 {
-    fprintf(stdout, "pre sort\n");
-    fprintf(stdout, "v1(%f, %f)\n", v1.x, v1.y);
-    fprintf(stdout, "v2(%f, %f)\n", v2.x, v2.y);
-    fprintf(stdout, "v3(%f, %f)\n", v3.x, v3.y);
-
     // Sort by y
     // starting from 3, move smaller things to left
     // lesser of 3,2 goes to 2
@@ -282,20 +297,14 @@ inline void fill_tri_f(const render_params &params, Model &m, int i, Vec3 v1, Ve
         v3 = tv;
         uv3 = tuv;
     }
-    fprintf(stdout, "post sort\n");
-    fprintf(stdout, "v1(%f, %f)\n", v1.x, v1.y);
-    fprintf(stdout, "v2(%f, %f)\n", v2.x, v2.y);
-    fprintf(stdout, "v3(%f, %f)\n", v3.x, v3.y);
 
     Vec3 p1 = NDCtoPixelsZ(v1, rt);
     Vec3 p2 = NDCtoPixelsZ(v2, rt);
     Vec3 p3 = NDCtoPixelsZ(v3, rt);
 
-    fprintf(stdout, "is flat top: %d\n", (int)p1.y == (int)p2.y);
     if ((int)p1.y == (int)p2.y)
     {
         // flat top triangle
-        fprintf(stdout, "%d is flat top\n", i);
         fill_tri_flat_top(params, m, i, p1, p2, p3, uv1, uv2, uv3, rt);
         return;
     }
@@ -303,7 +312,6 @@ inline void fill_tri_f(const render_params &params, Model &m, int i, Vec3 v1, Ve
     if ((int)p2.y == (int)p3.y)
     {
         // flat bottom triangle
-        fprintf(stdout, "%d is flat bot\n", i);
         fill_tri_flat_bot(params, m, i, p1, p2, p3, uv1, uv2, uv3, rt);
         return;
     }
@@ -311,9 +319,7 @@ inline void fill_tri_f(const render_params &params, Model &m, int i, Vec3 v1, Ve
     // find point along line p1-p3 that is at the y of v2
     /* general case - split the triangle in a topflat and bottom-flat one */
     float t = (v2.y - v1.y) / (v3.y - v1.y);
-    // if (t < 0 || t > 1){
-    assert(t >= 0 && t <= 1);
-    // }
+
     Vec3 p4 = Vec3::lerp(p1, p3, t);
     Vec2 uv4 = Vec2::lerp(uv1, uv3, t);
 
@@ -389,7 +395,8 @@ inline void fill_tri(const render_params &params, Model &m, int i, Vec3 v1, Vec3
 
                         const Vec3 pre_col = mat.diffuse * (amb + (1 - amb) * my_clamp(world_normal.Dot(params.light_dir), 0, 1.0));
                         const Vec3 col = {powf(pre_col.r, 1 / params.screen_gamma), powf(pre_col.g, 1 / params.screen_gamma), powf(pre_col.b, 1 / params.screen_gamma)};
-                        rt.color_buffer[y * rt.width + x] = col.toIntColor();
+                        // rt.color_buffer[y * rt.width + x] = col.toIntColor();
+                        rt.color_buffer[y * rt.width + x] = depthToCol(depth).toIntColor();
                     }
                 }
             }

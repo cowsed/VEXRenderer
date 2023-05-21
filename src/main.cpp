@@ -46,7 +46,7 @@ const render_params params = {
 
 RenderTarget viewport(WIDTH, HEIGHT);
 
-Model &model = cube1_model;
+Model &model = monkey_model;
 
 Vec3 reflect(Vec3 I, Vec3 N)
 {
@@ -81,7 +81,7 @@ void usercontrol(void)
 
   double rx = -M_PI / 4;
   double ry = M_PI / 4;
-  double z = 1.15;
+  double z = .75;
 
   bool was_pressing = false;
 
