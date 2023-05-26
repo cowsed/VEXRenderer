@@ -16,12 +16,17 @@ competition Competition;
 brain Brain;
 
 #include <iostream>
-#include <chrono> 
+#include <chrono>
 
 // #include "gfx_math.h"
 // #include "gfx.h"
 #include "renderer.h"
 #include "model.h"
+#include "intense_milk.h"
+#include "ritvexu.h"
+#include "brought_to_you.h"
+
+#include "animation_controller.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,9 +35,9 @@ brain Brain;
 #define M_PI 3.141592
 #endif
 
-#define WIDTH (3 * 120)
+#define WIDTH (4 * 120)
 #define HEIGHT (1 * 240)
-const Vec3 clear_color = {1.0, 1.0, 1.0};
+const Vec3 clear_color = {.2, .2, .2};
 
 const render_params params = {
     3.0,                        //  fov
@@ -40,18 +45,14 @@ const render_params params = {
     50.0,                       //  far
     true,                       //  do_backface_culling
     2.2,                        //  screen gamma
-    Vec3(2, 5, -2),             //  .light_pos
-    Vec3(2, 5, -2).Normalize(), //  .light_dir
+    Vec3(-2, 5, 4),             //  .light_pos
+    Vec3(-2, 5, 4).Normalize(), //  .light_dir
 };
 
 RenderTarget viewport(WIDTH, HEIGHT);
 
-Model &model = monkey_model;
 
-Vec3 reflect(Vec3 I, Vec3 N)
-{
-  return I - N * 2.0f * N.Dot(I);
-}
+
 
 double projection_time;
 double clear_time;
@@ -67,26 +68,90 @@ void printTextCenteredAt(int x, int y, const char *str)
 
 vex::controller main_controller;
 
-Vec3 robot_pos = {0, 0, 0};
-double robot_heading = 0.0;
-bool demo_mode = false;
-Vec3 focus_point = {0, .2, 0};
 
+bool demo_mode = false;
+Vec3 focus_point = {0, 0, 0};
+
+// faster towards 0 and 1, slow in middle
+float slow_middle(float t){
+  return powf(t*2.0 - 1.0, 3.0);
+}
+
+// faster towards 0, slower towards 1
+float slow_end(float t){
+  return powf(t, .9);
+}
 
 void usercontrol(void)
 {
   printf("Rendering\n");
-  model.init();
+  brought_model.init();
+  rit_vex_u_model.init();
+  intense_milk_model.init();
+
   static double full_frame_time = 0.0;
 
-  double rx = -M_PI / 4;
-  double ry = M_PI / 4;
-  double z = .75;
+  double rx = 0;
+  double ry = -M_PI / 10;
+  double z = .55;
 
-  bool was_pressing = false;
 
-  int last_mx = -1;
-  int last_my = -1;
+
+  const int slide_frames = 80;
+  auto rit_slide = [](uint tick, AnimationController &ac)
+  {
+    float t = (float)tick / (float)slide_frames;
+    t = slow_middle(t);
+    t*=6;
+    Vec3 p = {t, 0, 0};
+    Mat4 m = Mat4Identity();
+    m.SetPos(p);
+    ac.SetModelMatrix(m);
+  };
+  auto word_slide = [](uint tick, AnimationController &ac)
+  {
+    float t = (float)tick / (float)slide_frames;
+    t=slow_middle(t);
+    t*=-6;
+    Vec3 p = {t, 0, 0};
+    Mat4 m = Mat4Identity();
+    m.SetPos(p);
+    ac.SetModelMatrix(m);
+  };
+
+  auto milk_appear = [](uint tick, AnimationController &ac)
+  {
+    float t = (float)tick / (float)slide_frames;
+    t=slow_end(t);
+    t*=8;
+    t-=8;
+    Vec3 p = {0, -.3, t+1.5f};
+    float angle = t * M_PI/2.0 + 2.25 * M_PI / 2.0;
+    Mat4 m = RotateY(angle);
+    m.SetPos(p);
+    ac.SetModelMatrix(m);
+  };
+
+
+  auto do_nothing = [](uint tick, AnimationController &ac) {};
+
+  AnimationController ac;
+  ac.Setup({{SetModel(&rit_vex_u_model), 0},
+            {SetPosition({-4.0, 0, 0}), 0},
+            {rit_slide, slide_frames},
+            {do_nothing, 10},
+            
+            {SetModel(&brought_model), 0},
+            {SetPosition({4.0, 0, 0}), 0},
+            {word_slide, slide_frames},
+            {do_nothing, 10},
+
+            {SetModel(&intense_milk_model), 0},
+            {SetPosition({0, 0, 4.0}), 0},
+            {milk_appear, slide_frames},
+            {do_nothing, 10},
+
+            {do_nothing, 200}});
 
   while (true)
   {
@@ -97,87 +162,18 @@ void usercontrol(void)
     Brain.Screen.clearScreen(clear_color.toIntColor());
     clear_time = tmr.time(msec);
 
-    bool pressing = Brain.Screen.pressing();
-
-    int mx = Brain.Screen.xPosition();
-    int my = Brain.Screen.yPosition();
+    if (demo_mode)
     {
-      if (pressing && !was_pressing)
-      {
-        last_mx = -1;
-        last_my = -1;
-      }
-
-      if (pressing)
-      {
-        if (last_mx != -1) // skip first frame
-        {
-          float dx = 0;
-          float dy = 0;
-
-          if (!pan)
-          {
-            // rotate
-            rx += (mx - last_mx) / -100.0;
-            ry += (my - last_my) / 100.0;
-          }
-          else
-          {
-            // pan
-            dx += (float)(mx - last_mx) / 100.0;
-            dy += (float)(my - last_my) / 100.0;
-
-            Vec3 d_focus = (RotateY(-rx - M_PI) * RotateX(ry)).Mul4xV3(Vec3(dx, dy, 0.0));
-            focus_point = focus_point + d_focus;
-          }
-        }
-      }
-
-      last_mx = mx;
-      last_my = my;
-
-      if (main_controller.ButtonL1.pressing())
-      {
-        float dx = 0;
-        float dy = 0;
-
-        dx += main_controller.Axis4.position() / -100.0;
-        dy += main_controller.Axis3.position() / 100.0;
-        Vec3 d_focus = (RotateY(-rx - M_PI) * RotateX(ry)).Mul4xV3(Vec3(dx, dy, 0.0));
-        focus_point = focus_point + d_focus;
-      }
-
-      if (!main_controller.ButtonL1.pressing())
-      {
-
-        rx += main_controller.Axis4.position() / 200.0;
-        ry += main_controller.Axis3.position() / 200.0;
-      }
-
-      if (main_controller.ButtonUp.pressing())
-      {
-        z -= 0.01;
-      }
-      if (main_controller.ButtonDown.pressing())
-      {
-        z += 0.01;
-      }
-
-      if (demo_mode)
-      {
-        rx += 0.05;
-      }
-      z = my_clamp(z, 0.1, 3.0);
-
-      was_pressing = pressing;
-      viewport.Clear(clear_color.toIntColor(), params.far + 1);
-
-      Mat4 view = turntable_matrix(rx, ry, z * 10.f, focus_point);
-
-      render(params, model, viewport, view, Mat4Identity());
-
-      Brain.Screen.drawImageFromBuffer(viewport.color_buffer, (480 - WIDTH) / 2, 0, WIDTH, HEIGHT);
+      rx -= 0.05;
     }
+
+    viewport.Clear(clear_color.toIntColor(), params.far + 1);
+
+    Mat4 view = turntable_matrix(rx, ry, z * 10.f, focus_point);
+
+    ac.tick(1.0 / 60.0, params, viewport, view);
+
+    Brain.Screen.drawImageFromBuffer(viewport.color_buffer, (480 - WIDTH) / 2, 0, WIDTH, HEIGHT);
 
     double render_time_ms = tmr.time(timeUnits::msec);
     double render_time_s = tmr.time(timeUnits::sec);
@@ -195,10 +191,11 @@ void usercontrol(void)
       Brain.Screen.printAt(10, 120, false, "frame time: %.0f", full_frame_time);
       Brain.Screen.printAt(10, 140, false, "focus: %.1f, %.1f, %.1f", focus_point.x, focus_point.y, focus_point.z);
 
-      Brain.Screen.printAt(10, 170, false, "%d faces", model.num_faces); // + robot_model.num_faces);
-      Brain.Screen.printAt(10, 190, false, "%d verts", model.num_verts); // + robot_model.num_verts);
+      Brain.Screen.printAt(10, 170, false, "%d faces", ac.GetModel().num_faces); // + robot_model.num_faces);
+      Brain.Screen.printAt(10, 190, false, "%d verts", ac.GetModel().num_verts); // + robot_model.num_verts);
     }
 
+    /*
     {
       // right side buttons
       Brain.Screen.setFillColor(vex::color(60, 60, 60));
@@ -212,30 +209,8 @@ void usercontrol(void)
       printTextCenteredAt(480 - 30, 150, pan ? "!trans!" : "trans");
       Brain.Screen.drawRectangle(60 * 7, 180, 60, 60);
       printTextCenteredAt(480 - 30, 210, pan ? "rot" : "!rot!");
-
-      if (pressing)
-      {
-        if (Brain.Screen.xPosition() > 60 * 7)
-        {
-          if (Brain.Screen.yPosition() < 60)
-          {
-            z -= .01;
-          }
-          else if (Brain.Screen.yPosition() < 120)
-          {
-            z += .01;
-          }
-          else if (Brain.Screen.yPosition() < 180)
-          {
-            pan = true;
-          }
-          else
-          {
-            pan = false;
-          }
-        }
-      }
     }
+    */
     vexDelay(20 - tmr.time());
     full_frame_time = tmr.time();
 

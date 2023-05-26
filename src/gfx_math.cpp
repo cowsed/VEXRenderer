@@ -4,7 +4,6 @@
 #include <ostream>
 #include <math.h>
 
-
 Vec2 Vec2::operator+(const Vec2 b) const
 {
 	return {x + b.x, y + b.y};
@@ -175,6 +174,29 @@ Mat4 Mat4::operator*(const Mat4 other) const
 {
 	return Mul4x4(other);
 }
+
+Mat4 Mat4::GetNoPos() const
+{
+	Mat4 m = *this;
+	m.X03 = 0;
+	m.X13 = 0;
+	m.X23 = 0;
+	m.X33 = 0;
+	return m;
+}
+
+
+Vec3 Mat4::GetPos() const
+{
+	return {X03, X13, X23};
+}
+void Mat4::SetPos(Vec3 v)
+{
+	X03 = v.x;
+	X13 = v.y;
+	X23 = v.z;
+}
+
 std::ostream &operator<<(std::ostream &os, const Mat4 &m)
 {
 	os << "[" << m.X00 << "\t" << m.X01 << "\t" << m.X02 << "\t" << m.X03 << "]" << std::endl;

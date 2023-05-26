@@ -5,4 +5,4 @@
 #include "gfx.h"
 
 
-extern Model monkey_model;
+extern Model brought_model;

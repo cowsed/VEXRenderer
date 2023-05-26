@@ -83,7 +83,8 @@ inline void fill_tri_flat_top(const render_params &params, Model &m, int i, Vec3
         uv2 = tuv;
     }
 
-    if (v3.y - v1.y < .5){
+    if (v3.y - v1.y < .5)
+    {
         return;
     }
 
@@ -117,10 +118,10 @@ inline void fill_tri_flat_top(const render_params &params, Model &m, int i, Vec3
             goto next_y;
         }
         if (y < 0)
-        { 
+        {
             goto next_y;
         }
-        if (y >= rt.height) 
+        if (y >= rt.height)
         {
             return;
         }
@@ -145,7 +146,7 @@ inline void fill_tri_flat_top(const render_params &params, Model &m, int i, Vec3
                 const Vec3 pre_col = mat.diffuse * (amb + (1 - amb) * my_clamp(world_normal.Dot(params.light_dir), 0, 1.0));
                 const Vec3 col = {powf(pre_col.r, 1 / params.screen_gamma), powf(pre_col.g, 1 / params.screen_gamma), powf(pre_col.b, 1 / params.screen_gamma)};
                 // rt.color_buffer[y * rt.width + x] = col.toIntColor();
-                        rt.color_buffer[y * rt.width + x] = depthToCol(depth).toIntColor();
+                rt.color_buffer[y * rt.width + x] = depthToCol(depth).toIntColor();
 
                 // Vec3 col = db_palet[i % 7];
                 // rt.color_buffer[y * rt.width + x] = col.toIntColor();
@@ -165,6 +166,7 @@ inline void fill_tri_flat_top(const render_params &params, Model &m, int i, Vec3
         right.y++;
     }
 }
+
 inline void fill_tri_flat_bot(const render_params &params, Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 uv2, Vec2 uv3, const RenderTarget &rt)
 {
     v1.z = 1.0 / v1.z;
@@ -186,7 +188,8 @@ inline void fill_tri_flat_bot(const render_params &params, Model &m, int i, Vec3
         uv3 = tuv;
     }
 
-    if (v3.y - v1.y < .5){
+    if (v3.y - v1.y < .5)
+    {
         return;
     }
 
@@ -327,7 +330,7 @@ inline void fill_tri_f(const render_params &params, Model &m, int i, Vec3 v1, Ve
     fill_tri_flat_top(params, m, i, p2, p4, p3, uv2, uv4, uv3, rt);
 }
 
-inline void fill_tri(const render_params &params, Model &m, int i, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 uv2, Vec2 uv3, const RenderTarget &rt)
+inline void fill_tri(const render_params &params, Model &m, int i, Mat4 model_mat, Vec3 v1, Vec3 v2, Vec3 v3, Vec2 uv1, Vec2 uv2, Vec2 uv3, const RenderTarget &rt)
 {
 
     uv1 = uv1 / v1.z;
@@ -359,8 +362,7 @@ inline void fill_tri(const render_params &params, Model &m, int i, Vec3 v1, Vec3
     const int maxy = (int)min(bb_pixel.max.y + 1, rt.height);
 
     // We don't interpolate vertex attributes, we're filling only one tri at a time -> all this stuff is constant
-    const Vec3 world_normal = m.normals[i];
-
+    const Vec3 world_normal = model_mat.GetNoPos().Mul4xV3(m.normals[i]);
     const Material mat = m.materials[m.faces[i].matID];
 
     const float amb = .2;
@@ -396,7 +398,7 @@ inline void fill_tri(const render_params &params, Model &m, int i, Vec3 v1, Vec3
                         const Vec3 pre_col = mat.diffuse * (amb + (1 - amb) * my_clamp(world_normal.Dot(params.light_dir), 0, 1.0));
                         const Vec3 col = {powf(pre_col.r, 1 / params.screen_gamma), powf(pre_col.g, 1 / params.screen_gamma), powf(pre_col.b, 1 / params.screen_gamma)};
                         // rt.color_buffer[y * rt.width + x] = col.toIntColor();
-                        rt.color_buffer[y * rt.width + x] = depthToCol(depth).toIntColor();
+                        rt.color_buffer[y * rt.width + x] = col.toIntColor(); // depthToCol(depth).toIntColor();
                     }
                 }
             }
@@ -459,7 +461,7 @@ void render(const render_params &params, Model &m, RenderTarget &rt, const Mat4 
         }
         // fill_tri(params, m, i, v1, v2, v3, uv1, uv2, uv3, rt);
 
-        fill_tri_f(params, m, i, v1, v2, v3, uv1, uv2, uv3, rt);
+        fill_tri(params, m, i, model, v1, v2, v3, uv1, uv2, uv3, rt);
     }
 }
 Mat4 turntable_matrix(float x, float y, float zoom, Vec3 focus_point)

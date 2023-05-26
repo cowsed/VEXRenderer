@@ -1,8 +1,7 @@
 #pragma once
 
-
+#include <ostream>
 float lerpS(const float a, const float b, const float t);
-
 
 struct Vec2;
 struct Vec3;
@@ -23,7 +22,7 @@ struct Vec2
 		float v;
 	};
 
-	Vec2 operator-(const Vec2 b) const;
+	Vec2 operator-(const Vec2 b) const; 
 	Vec2 operator+(const Vec2 b) const;
 	Vec2 operator/(const float s) const;
 	Vec2 operator*(const float s) const;
@@ -100,6 +99,9 @@ struct Mat4
 	Vec3 Mul4xV3(Vec3 v);
 	Vec4 Mul4xV4(const Vec4 v) const;
 	Mat4 Mul4x4(const Mat4 other) const;
+	Mat4 GetNoPos() const;
+	Vec3 GetPos() const;
+	void SetPos(Vec3 v);
 	Mat4 operator*(const Mat4 other) const;
 };
 Mat4 Mat4Identity();
