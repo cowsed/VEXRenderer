@@ -125,8 +125,8 @@ void usercontrol(void)
     t=slow_end(t);
     t*=8;
     t-=8;
-    Vec3 p = {0, -.3, t+1.5f};
-    float angle = t * M_PI/2.0 + 2.25 * M_PI / 2.0;
+    Vec3 p = {0, -.8f, t+2.6f};
+    float angle = t * M_PI/2.0 + 2.325 * M_PI / 2.0;
     Mat4 m = RotateY(angle);
     m.SetPos(p);
     ac.SetModelMatrix(m);
@@ -151,7 +151,7 @@ void usercontrol(void)
             {milk_appear, slide_frames},
             {do_nothing, 10},
 
-            {do_nothing, 200}});
+            {do_nothing, 2000}});
 
   while (true)
   {

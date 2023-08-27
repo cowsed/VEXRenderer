@@ -77,7 +77,7 @@ endif
 
 
 # compiler flags
-CFLAGS_CL =  -ggdb
+CFLAGS_CL =  -ggdb -Os
 CFLAGS    = ${CFLAGS_CL} --std=gnu++20
 # -Wall -Werror=return-type
 # $(DEFINES)
