@@ -352,3 +352,45 @@ WARNING: OpenGL error 0x500 in or before mjr_makeContext
 Sun Aug 27 12:33:52 2023
 WARNING: OpenGL error 0x500 in or before mjr_makeContext
 
+Sun Aug 27 13:49:52 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 13:50:41 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 14:03:56 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 14:14:50 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 14:16:34 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 14:19:41 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 14:22:58 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 14:23:41 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 14:24:39 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 14:25:08 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 14:25:37 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 14:28:10 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 18:31:15 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 18:32:15 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+

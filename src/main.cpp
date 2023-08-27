@@ -51,9 +51,6 @@ const render_params params = {
 
 RenderTarget viewport(WIDTH, HEIGHT);
 
-
-
-
 double projection_time;
 double clear_time;
 double blit_time;
@@ -68,23 +65,13 @@ void printTextCenteredAt(int x, int y, const char *str)
 
 vex::controller main_controller;
 
-
 bool demo_mode = false;
 Vec3 focus_point = {0, 0, 0};
 
-// faster towards 0 and 1, slow in middle
-float slow_middle(float t){
-  return powf(t*2.0 - 1.0, 3.0);
-}
 
-// faster towards 0, slower towards 1
-float slow_end(float t){
-  return powf(t, .9);
-}
 
 void usercontrol(void)
 {
-  printf("Rendering\n");
   brought_model.init();
   rit_vex_u_model.init();
   intense_milk_model.init();
@@ -95,43 +82,22 @@ void usercontrol(void)
   double ry = -M_PI / 10;
   double z = .55;
 
-
-
   const int slide_frames = 80;
-  auto rit_slide = [](uint tick, AnimationController &ac)
-  {
-    float t = (float)tick / (float)slide_frames;
-    t = slow_middle(t);
-    t*=6;
-    Vec3 p = {t, 0, 0};
-    Mat4 m = Mat4Identity();
-    m.SetPos(p);
-    ac.SetModelMatrix(m);
-  };
-  auto word_slide = [](uint tick, AnimationController &ac)
-  {
-    float t = (float)tick / (float)slide_frames;
-    t=slow_middle(t);
-    t*=-6;
-    Vec3 p = {t, 0, 0};
-    Mat4 m = Mat4Identity();
-    m.SetPos(p);
-    ac.SetModelMatrix(m);
-  };
+  auto rit_slide = Slide({-3, 0, 0}, {3, 0, 0}, slide_frames, ease_middle);
+  auto word_slide = Slide({3, 0, 0}, {-3, 0, 0}, slide_frames, ease_middle);
 
   auto milk_appear = [](uint tick, AnimationController &ac)
   {
     float t = (float)tick / (float)slide_frames;
-    t=slow_end(t);
-    t*=8;
-    t-=8;
-    Vec3 p = {0, -.8f, t+2.6f};
-    float angle = t * M_PI/2.0 + 2.325 * M_PI / 2.0;
+    t = ease_end(t);
+    t *= 8;
+    t -= 8;
+    Vec3 p = {0, -.8f, t + 2.6f};
+    float angle = t * M_PI / 2.0 + 2.325 * M_PI / 2.0;
     Mat4 m = RotateY(angle);
     m.SetPos(p);
     ac.SetModelMatrix(m);
   };
-
 
   auto do_nothing = [](uint tick, AnimationController &ac) {};
 
@@ -140,7 +106,7 @@ void usercontrol(void)
             {SetPosition({-4.0, 0, 0}), 0},
             {rit_slide, slide_frames},
             {do_nothing, 10},
-            
+
             {SetModel(&brought_model), 0},
             {SetPosition({4.0, 0, 0}), 0},
             {word_slide, slide_frames},
@@ -151,7 +117,7 @@ void usercontrol(void)
             {milk_appear, slide_frames},
             {do_nothing, 10},
 
-            {do_nothing, 2000}});
+            {do_nothing, 200}});
 
   while (true)
   {
