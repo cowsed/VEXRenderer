@@ -433,3 +433,9 @@ WARNING: OpenGL error 0x500 in or before mjr_makeContext
 Thu Aug 31 16:12:42 2023
 WARNING: OpenGL error 0x500 in or before mjr_makeContext
 
+Thu Aug 31 16:36:54 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Thu Aug 31 16:38:39 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
