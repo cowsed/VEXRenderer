@@ -5,4 +5,4 @@
 #include "gfx.h"
 
 
-extern Model cube1_model;
+extern Model cheese_puff_model;

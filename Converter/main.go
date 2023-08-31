@@ -110,8 +110,8 @@ func TriNormal(v1, v2, v3 vec3) vec3 {
 }
 
 var defualt_material = material{
-	ambientCol:  vec3{1.0, 1.0, 1.0},
-	diffuseCol:  vec3{1.0, 1.0, 1.0},
+        ambientCol:  vec3{1.0, 1.0, 1.0},
+         diffuseCol:  vec3{1.0, 1.0, 1.0},
 	specularCol: vec3{1.0, 1.0, 1.0},
 	Ns:          1,
 }

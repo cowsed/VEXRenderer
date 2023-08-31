@@ -1,3 +1,5 @@
+#pragma once
+
 #include "math.h"
 #include "gfx.h"
 #include "gfx_math.h"
