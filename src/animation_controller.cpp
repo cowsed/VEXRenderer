@@ -70,6 +70,15 @@ auto SetPosition(Vec3 pos) -> anim_func
     };
 }
 
+auto SetMatrix(Mat4 mat) -> anim_func{
+    return [mat](int tick, AnimationController &ac)
+    {
+
+        ac.SetModelMatrix(mat);
+    };
+    }
+
+
 auto SetModel(Model *mod) -> anim_func
 {
     return [mod](int tick, AnimationController &ac)
@@ -78,7 +87,7 @@ auto SetModel(Model *mod) -> anim_func
     };
 }
 
-anim_func Slide(Vec3 from, Vec3 to, uint length_ticks, ease_func easer)
+anim_func SlideBetween(Vec3 from, Vec3 to, uint length_ticks, ease_func easer)
 {
   return [from, to, length_ticks, easer](uint tick, AnimationController &ac)
   {
@@ -89,7 +98,7 @@ anim_func Slide(Vec3 from, Vec3 to, uint length_ticks, ease_func easer)
 
     Vec3 p = Vec3::lerp(from, to, t);
 
-    Mat4 m = Mat4Identity();
+    Mat4 m = ac.GetModelMatrix();
     m.SetPos(p);
     ac.SetModelMatrix(m);
 

@@ -394,3 +394,42 @@ WARNING: OpenGL error 0x500 in or before mjr_makeContext
 Sun Aug 27 18:32:15 2023
 WARNING: OpenGL error 0x500 in or before mjr_makeContext
 
+Sun Aug 27 19:23:58 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 19:28:30 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 19:40:32 2023
+WARNING: Nan, Inf or huge value in QACC at DOF 12. The simulation is unstable. Time = 866.8700.
+
+Sun Aug 27 22:33:21 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 22:36:42 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 22:40:05 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 22:40:47 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 22:41:45 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 22:42:27 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 22:43:02 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 22:48:24 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Sun Aug 27 22:50:51 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+
+Thu Aug 31 16:12:42 2023
+WARNING: OpenGL error 0x500 in or before mjr_makeContext
+

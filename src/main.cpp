@@ -22,6 +22,7 @@ brain Brain;
 // #include "gfx.h"
 #include "renderer.h"
 #include "model.h"
+#include "intense_milk.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,12 +47,8 @@ const render_params params = {
 
 RenderTarget viewport(WIDTH, HEIGHT);
 
-Model &model = cube1_model;
+Model &model = intense_milk_model;
 
-Vec3 reflect(Vec3 I, Vec3 N)
-{
-  return I - N * 2.0f * N.Dot(I);
-}
 
 double projection_time;
 double clear_time;

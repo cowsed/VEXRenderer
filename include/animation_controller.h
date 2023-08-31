@@ -34,8 +34,9 @@ private:
 using ease_func = float(*)(float);
 
 auto SetPosition(Vec3 pos) -> anim_func;
+auto SetMatrix(Mat4 mat) -> anim_func;
 auto SetModel(Model *mod) -> anim_func;
-auto Slide(Vec3 from, Vec3 to, uint length_ticks, ease_func easer) -> anim_func;
+auto SlideBetween(Vec3 from, Vec3 to, uint length_ticks, ease_func easer) -> anim_func;
 
 
 // fast at 0, slow at .5, fast at 1
