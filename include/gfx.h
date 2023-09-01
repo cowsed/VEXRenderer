@@ -15,15 +15,15 @@ const Vec3 up_vec = {0, 1, 0};
 // normal calculation as such
 struct Tri
 {
-    int v1_index;
-    int v2_index;
-    int v3_index;
+    uint32_t v1_index;
+    uint32_t v2_index;
+    uint32_t v3_index;
 
-    int uv1_index;
-    int uv2_index;
-    int uv3_index;
+    uint32_t uv1_index;
+    uint32_t uv2_index;
+    uint32_t uv3_index;
 
-    int matID;
+    uint32_t matID;
 };
 
 Vec3 TriNormal(const Vec3 &v1, const Vec3 &v2, const Vec3 &v3);

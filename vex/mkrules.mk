@@ -13,7 +13,7 @@ $(BUILD)/%.o: %.cpp $(SRC_H) $(SRC_A)
 	$(Q)$(CXX) $(CXX_FLAGS) $(INC) -c -o $@ $<
 	
 # create executable 
-$(BUILD)/$(PROJECT).elf: $(OBJ) $(TOOLCHAIN)/$(PLATFORM)/libsimv5rt.a
+$(BUILD)/$(PROJECT).elf: $(OBJ) $(TOOLCHAIN)/$(PLATFORM)/build/libsimv5rt.a
 	$(ECHO) "LINK $@"
 	$(Q)$(LINK) $(LNK_FLAGS) -o $@ $^ $(LIBS)
 	$(Q)$(SIZE) $@

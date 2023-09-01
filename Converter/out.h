@@ -5,4 +5,4 @@
 #include "gfx.h"
 
 
-extern Model brought_model;
+extern Model intense_milk_model;

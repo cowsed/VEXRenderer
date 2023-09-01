@@ -5,6 +5,7 @@ import (
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
+	"math"
 	"os"
 	"path/filepath"
 	"text/template"
@@ -110,8 +111,8 @@ func TriNormal(v1, v2, v3 vec3) vec3 {
 }
 
 var defualt_material = material{
-        ambientCol:  vec3{1.0, 1.0, 1.0},
-         diffuseCol:  vec3{1.0, 1.0, 1.0},
+	ambientCol:  vec3{1.0, 1.0, 1.0},
+	diffuseCol:  vec3{1.0, 1.0, 1.0},
 	specularCol: vec3{1.0, 1.0, 1.0},
 	Ns:          1,
 }
@@ -126,6 +127,148 @@ func main() {
 
 	name := filepath.Base(objName[:len(objName)-len(filepath.Ext(objName))])
 	fmt.Println("Name: ", name)
+
+	mod := LoadModel(objName, mtlName, name)
+
+	fmt.Println("BINARY")
+	SaveBinary(mod)
+	// SaveText(mod)
+
+}
+
+func AddColorUint32(n uint32, buf *[]byte) {
+	b1 := uint8((n & 0xFF000000) >> 24)
+	b2 := uint8((n & 0x00FF0000) >> 16)
+	b3 := uint8((n & 0x0000FF00) >> 8)
+	b4 := uint8((n & 0xFF))
+
+	*buf = append((*buf), []byte{b3, b2, b1, b4}...)
+}
+
+func AddUint32(n uint32, buf *[]byte) {
+	b1 := uint8((n & 0xFF000000) >> 24)
+	b2 := uint8((n & 0x00FF0000) >> 16)
+	b3 := uint8((n & 0x0000FF00) >> 8)
+	b4 := uint8((n & 0xFF))
+
+	*buf = append((*buf), []byte{b4, b3, b2, b1}...)
+}
+
+func uint8FromBool(b bool) uint8 {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+func SaveBinary(mod Model) {
+	f, err := os.Create("out.vobj")
+	check(err)
+
+	bytes_per_uint32 := 4
+	bytes_per_vec3 := 3 * 4
+	bytes_per_vec2 := 2 * 4
+	bytes_per_face := 7 * bytes_per_uint32
+	bytes_per_material := bytes_per_vec3*3 + 4 + 1
+
+	bytes_needed := bytes_per_uint32*6 +
+		bytes_per_vec3*len(mod.Verts) +
+		bytes_per_vec2*len(mod.UVs) +
+		bytes_per_face*len(mod.Faces) +
+		bytes_per_material*len(mod.Materials) +
+		bytes_per_uint32*mod.Kd_height*mod.Kd_width
+
+	bys := make([]byte, 0, bytes_needed)
+
+	AddUint32(uint32(len(mod.Materials)), &bys)
+	AddUint32(uint32(len(mod.Verts)), &bys)
+	AddUint32(uint32(len(mod.UVs)), &bys)
+	AddUint32(uint32(len(mod.Faces)), &bys)
+
+	AddUint32(uint32(mod.Kd_width), &bys)
+	AddUint32(uint32(mod.Kd_height), &bys)
+
+	for _, v := range mod.Verts {
+		AddUint32(math.Float32bits(float32(v.x)), &bys)
+		AddUint32(math.Float32bits(float32(v.y)), &bys)
+		AddUint32(math.Float32bits(float32(v.z)), &bys)
+	}
+
+	fmt.Println("uv offset", len(bys))
+	for _, uv := range mod.UVs {
+		AddUint32(math.Float32bits(float32(uv.x)), &bys)
+		AddUint32(math.Float32bits(float32(uv.y)), &bys)
+	}
+
+	for _, f := range mod.Faces {
+		AddUint32(uint32(f.v1), &bys)
+		AddUint32(uint32(f.v2), &bys)
+		AddUint32(uint32(f.v3), &bys)
+
+		AddUint32(uint32(f.uv1), &bys)
+		AddUint32(uint32(f.uv2), &bys)
+		AddUint32(uint32(f.uv3), &bys)
+
+		AddUint32(uint32(f.mat_index), &bys)
+
+	}
+
+	for _, m := range mod.Materials {
+		AddUint32(math.Float32bits(float32(m.ambientCol.x)), &bys)
+		AddUint32(math.Float32bits(float32(m.ambientCol.y)), &bys)
+		AddUint32(math.Float32bits(float32(m.ambientCol.z)), &bys)
+
+		AddUint32(math.Float32bits(float32(m.diffuseCol.x)), &bys)
+		AddUint32(math.Float32bits(float32(m.diffuseCol.y)), &bys)
+		AddUint32(math.Float32bits(float32(m.diffuseCol.z)), &bys)
+
+		AddUint32(math.Float32bits(float32(m.specularCol.x)), &bys)
+		AddUint32(math.Float32bits(float32(m.specularCol.y)), &bys)
+		AddUint32(math.Float32bits(float32(m.specularCol.z)), &bys)
+
+		AddUint32(math.Float32bits(float32(m.Ns)), &bys)
+		bys = append(bys, uint8FromBool(m.owns_kd))
+
+	}
+
+	for _, pix := range mod.Kd_map {
+		AddColorUint32(pix, &bys)
+	}
+
+	fmt.Printf("Thought %d but was %d\n", bytes_needed, len(bys))
+
+	_, err = f.Write(bys)
+	check(err)
+
+	err = f.Close()
+	check(err)
+
+}
+
+func SaveText(mod Model) {
+
+	// Make template
+
+	header_f, err := os.Create("out.h")
+	check(err)
+	header_templ, err := template.ParseFiles("h_template.txt")
+	check(err)
+	err = header_templ.Execute(header_f, mod)
+	check(err)
+	header_f.Close()
+
+	source_f, err := os.Create("out.cpp")
+	check(err)
+	source_templ, err := template.ParseFiles("cpp_template.txt")
+	check(err)
+	err = source_templ.Execute(source_f, mod)
+	check(err)
+	source_f.Close()
+
+}
+
+func LoadModel(objName, mtlName, name string) Model {
+
 	path := filepath.Dir(objName)
 
 	mod, err := obj.Decode(objName, mtlName)
@@ -217,7 +360,7 @@ func main() {
 		face := mod.Objects[0].Faces[i]
 		if len(face.Vertices) != 3 {
 			fmt.Println("TRIANGULATE YOUR MODEL FIRST - IF YOU DID THAT, YOU WOULDNT GET THIS ERROR")
-			return
+			panic("TRIANGULATE")
 		}
 		m1.Faces[i].v1 = face.Vertices[0]
 		m1.Faces[i].v2 = face.Vertices[1]
@@ -241,25 +384,7 @@ func main() {
 	} else {
 		fmt.Printf(". kd map: %dx%d\n", m1.Kd_width, m1.Kd_height)
 	}
-
-	// Make template
-
-	header_f, err := os.Create("out.h")
-	check(err)
-	header_templ, err := template.ParseFiles("h_template.txt")
-	check(err)
-	err = header_templ.Execute(header_f, m1)
-	check(err)
-	header_f.Close()
-
-	source_f, err := os.Create("out.cpp")
-	check(err)
-	source_templ, err := template.ParseFiles("cpp_template.txt")
-	check(err)
-	err = source_templ.Execute(source_f, m1)
-	check(err)
-	source_f.Close()
-
+	return m1
 }
 
 func check(err error) {

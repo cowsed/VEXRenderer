@@ -3,30 +3,33 @@
 #include "gfx.h"
 #include "gfx_math.h"
 #include "stdlib.h"
+#include "vex_brain.h"
 
 struct Model
 {
-    const int num_materials;
+    const uint32_t num_materials;
     const Material *materials;
 
-    const int num_verts;
+    const uint32_t num_verts;
     const Vec3 *verts;
 
-    const int num_uvs;
+    const uint32_t num_uvs;
     const Vec2 *uvs;
 
-    const int num_normals;
+    const uint32_t num_normals;
     Vec3 *normals;
 
-    const int num_faces;
+    const uint32_t num_faces;
     const Tri *faces;
 
-    const int map_kd_width;
-    const int map_kd_height;
+    const uint32_t map_kd_width;
+    const uint32_t map_kd_height;
     const uint32_t *map_kd;
 
     Vec3 *cam_projected_points;
     Vec3 *screen_points;
+
+    uint8_t *file_buffer = nullptr;
 
     void allocate_enough()
     {
@@ -37,6 +40,10 @@ struct Model
     {
         free(cam_projected_points);
         free(screen_points);
+        if (file_buffer != NULL)
+        {
+            free(file_buffer);
+        }
     }
     void calculate_normals()
     {
@@ -44,7 +51,7 @@ struct Model
         for (int i = 0; i < num_faces; i++)
         {
             Tri t = faces[i];
-            Vec3 world_normal = TriNormal(verts[t.v1_index], verts[t.v2_index], verts[t.v3_index]).Normalize(); // normals[i]; //
+            Vec3 world_normal = TriNormal(verts[t.v1_index], verts[t.v2_index], verts[t.v3_index]).Normalize();
             normals[i] = world_normal;
         }
     }
@@ -54,3 +61,6 @@ struct Model
         calculate_normals();
     }
 };
+
+
+Model ModeFromFile(const char *fname);
