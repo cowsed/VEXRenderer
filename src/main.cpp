@@ -7,6 +7,9 @@
 /*                                                                            */
 /*----------------------------------------------------------------------------*/
 
+// 32263104
+// 27766760
+// 26592120
 #include "vex.h"
 #include <vector>
 using namespace vex;
@@ -18,11 +21,7 @@ brain Brain;
 #include <iostream>
 #include <chrono>
 
-// #include "gfx_math.h"
-// #include "gfx.h"
 #include "renderer.h"
-#include "model.h"
-#include "intense_milk.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,8 +46,6 @@ const render_params params = {
 
 RenderTarget viewport(WIDTH, HEIGHT);
 
-Model &model = intense_milk_model;
-
 double projection_time;
 double clear_time;
 double blit_time;
@@ -71,10 +68,9 @@ Vec3 focus_point = {0, .2, 0};
 void usercontrol(void)
 {
   printf("Rendering\n");
-  model.init();
 
-  Model my_model = ModeFromFile("milk.vobj");
-  if (my_model.verts == 0)
+  Model model = ModeFromFile("milk.vobj");
+  if (model.verts == 0)
   {
     printf("Failed to load model");
     return;
@@ -177,7 +173,7 @@ void usercontrol(void)
 
       Mat4 view = turntable_matrix(rx, ry, z * 10.f, focus_point);
 
-      render(params, my_model, viewport, view, Mat4Identity());
+      render(params, model, viewport, view, Mat4Identity());
 
       Brain.Screen.drawImageFromBuffer(viewport.color_buffer, (480 - WIDTH) / 2, 0, WIDTH, HEIGHT);
     }

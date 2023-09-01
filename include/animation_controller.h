@@ -4,7 +4,6 @@
 #include <functional>
 #include "gfx_math.h"
 #include "gfx.h"
-#include "model.h"
 #include "renderer.h"
 
 class AnimationController;
