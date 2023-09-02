@@ -24,7 +24,7 @@ struct Model
 
     const uint32_t map_kd_width;
     const uint32_t map_kd_height;
-    const uint32_t *map_kd;
+    uint32_t *map_kd;
 
     Vec3 *cam_projected_points;
     Vec3 *screen_points;
@@ -36,6 +36,7 @@ struct Model
         cam_projected_points = (Vec3 *)malloc(sizeof(Vec3) * num_verts);
         screen_points = (Vec3 *)malloc(sizeof(Vec3) * num_verts);
     }
+    // Model();
     ~Model()
     {
         free(cam_projected_points);

@@ -7,6 +7,8 @@ uint32_t read_uint32(uint8_t *buf, int index)
     return *(uint32_t *)(buf + index);
 }
 
+
+
 Model ModeFromFile(const char *fname)
 {
     vex::brain::sdcard sd;
@@ -53,7 +55,7 @@ Model ModeFromFile(const char *fname)
     const Vec3 *verts = (Vec3 *)(file_buffer + cur_index);
     cur_index += sizeof(Vec3) * num_verts;
 
-    std::cout << "uv offset " << cur_index<<'\n';
+    std::cout << "uv offset " << cur_index << '\n';
     const Vec2 *uvs = (Vec2 *)(file_buffer + cur_index);
     cur_index += sizeof(Vec2) * num_uvs;
 
@@ -64,7 +66,7 @@ Model ModeFromFile(const char *fname)
     const Material *mats = (Material *)(file_buffer + cur_index);
     cur_index += sizeof(Material) * num_materials;
 
-    const uint32_t *map_kd = (uint32_t *)(file_buffer + cur_index);
+    uint32_t *map_kd = (uint32_t *)(file_buffer + cur_index);
 
     /*
     4 byte num materials

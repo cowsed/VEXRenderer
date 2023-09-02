@@ -23,7 +23,7 @@
 #define M_PI 3.141592
 #endif
 
-#define WIDTH (3 * 120)
+#define WIDTH (4 * 120)
 #define HEIGHT (1 * 240)
 const Vec3 clear_color = {1.0, 1.0, 1.0};
 
@@ -49,12 +49,13 @@ void printTextCenteredAt(int x, int y, const char *str)
 }
 
 bool demo_mode = false;
-Vec3 focus_point = {0, .2, 0};
-double rx = -M_PI / 4;
-double ry = M_PI / 4;
-double z = 1.15;
+Vec3 focus_point = {0, .0, 0};
+double rx = 0.0;
+double ry = M_PI/2.0;
+double z = 0.72;
 bool show_stats = true;
 bool pan = false;
+int current_slide = 0;
 
 void do_cam_movement();
 void switch_modes();
@@ -62,16 +63,18 @@ void draw_right_buttons(bool show_stats);
 void draw_stats(bool show_stats, int render_time_ms, int full_frame_time, const Model &model);
 void usercontrol(void)
 {
-
-  Model model = ModeFromFile("milk.vobj");
-  assert(model.verts != nullptr);
+  const int num_slides = 4;
+  Model models[num_slides] = {ModeFromFile("1.vobj"), ModeFromFile("2.vobj"), ModeFromFile("3.vobj"), ModeFromFile("4.vobj")};
 
   double full_frame_time = 0.0;
   double clear_time = 0.0;
   double blit_time = 0.0;
 
+  int t = 0;
   while (true)
   {
+    int slide = (t/100)%num_slides;
+    Model &mod = models[slide];
 
     vex::timer tmr;
     tmr.reset();
@@ -79,24 +82,24 @@ void usercontrol(void)
     Brain.Screen.clearScreen(clear_color.toIntColor());
     clear_time = tmr.time(msec);
 
-    do_cam_movement();
+    // do_cam_movement();
 
     viewport.Clear(clear_color.toIntColor(), params.far + 1);
 
     Mat4 view = turntable_matrix(rx, ry, z * 10.f, focus_point);
 
-    render(params, model, viewport, view, Mat4Identity());
+    render(params, mod, viewport, view, Mat4Identity());
     double render_time_ms = tmr.time(timeUnits::msec);
 
     Brain.Screen.drawImageFromBuffer(viewport.color_buffer, (480 - WIDTH) / 2, 0, WIDTH, HEIGHT);
     full_frame_time = tmr.time(timeUnits::msec);
 
-    draw_stats(show_stats, render_time_ms, full_frame_time, model);
-    draw_right_buttons(show_stats);
-    switch_modes();
+    // draw_stats(show_stats, render_time_ms, full_frame_time, models[0]);
+    // draw_right_buttons(show_stats);
+    // switch_modes();
 
     vexDelay(20 - tmr.time());
-
+    t++;
     Brain.Screen.render();
   }
 }
