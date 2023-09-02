@@ -8,7 +8,6 @@
 #include "arm_neon.h"
 #endif
 
-
 const Vec3 up_vec = {0, 1, 0};
 
 // ccw ordering
@@ -77,5 +76,5 @@ inline const tri_info insideTri(const Vec3 &v1, const Vec3 &v2, const Vec3 &v3, 
     return {inside, area, w1, w2, w3};
 }
 
-
 Vec3 get_tex(float u, float v, int w, int h, const uint32_t *tex);
+Vec3 get_tex_linear(float u, float v, int w, int h, const uint32_t *tex);
