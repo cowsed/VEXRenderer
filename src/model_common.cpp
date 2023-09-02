@@ -14,7 +14,6 @@ Model ModeFromFile(const char *fname)
     vex::brain::sdcard sd;
 
     int32_t buf_size = sd.size(fname);
-    std::cout << "buf size: " << buf_size << '\n';
     uint8_t *file_buffer = (uint8_t *)malloc(buf_size);
     int32_t read = sd.loadfile(fname, file_buffer, buf_size);
     if (read == 0)
@@ -55,7 +54,6 @@ Model ModeFromFile(const char *fname)
     const Vec3 *verts = (Vec3 *)(file_buffer + cur_index);
     cur_index += sizeof(Vec3) * num_verts;
 
-    std::cout << "uv offset " << cur_index << '\n';
     const Vec2 *uvs = (Vec2 *)(file_buffer + cur_index);
     cur_index += sizeof(Vec2) * num_uvs;
 
@@ -83,7 +81,6 @@ Model ModeFromFile(const char *fname)
     [ kd map ]
 
     */
-    std::cout << " uvs[0] " << uvs[0].x << ", " << uvs[0].y << '\n';
 
     Model m = Model{
         .num_materials = num_materials,

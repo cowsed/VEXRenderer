@@ -14,6 +14,7 @@
 #include <chrono>
 
 #include "renderer.h"
+#include "animation_controller.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,7 +26,7 @@
 
 #define WIDTH (4 * 120)
 #define HEIGHT (1 * 240)
-const Vec3 clear_color = {1.0, 1.0, 1.0};
+const Vec3 clear_color = {0.0, 0.0, 0.0};
 
 const render_params params = {
     3.0,                       //  fov
@@ -51,8 +52,8 @@ void printTextCenteredAt(int x, int y, const char *str)
 bool demo_mode = false;
 Vec3 focus_point = {0, .0, 0};
 double rx = 0.0;
-double ry = M_PI/2.0;
-double z = 0.72;
+double ry = 0;
+double z = 1.0;
 bool show_stats = true;
 bool pan = false;
 int current_slide = 0;
@@ -63,18 +64,21 @@ void draw_right_buttons(bool show_stats);
 void draw_stats(bool show_stats, int render_time_ms, int full_frame_time, const Model &model);
 void usercontrol(void)
 {
-  const int num_slides = 4;
-  Model models[num_slides] = {ModeFromFile("1.vobj"), ModeFromFile("2.vobj"), ModeFromFile("3.vobj"), ModeFromFile("4.vobj")};
+  const int num_slides = 8;
+  Model models[num_slides] = {ModeFromFile("1.vobj"), ModeFromFile("2.vobj"), ModeFromFile("3.vobj"), ModeFromFile("4.vobj"), ModeFromFile("5.vobj"), ModeFromFile("6.vobj"), ModeFromFile("7.vobj"), ModeFromFile("8.vobj")};
 
   double full_frame_time = 0.0;
   double clear_time = 0.0;
   double blit_time = 0.0;
 
-  int t = 0;
+  float t = 0.0;
+  int slide_time_ms = 2000;
+  int slide = 0;
   while (true)
   {
-    int slide = (t/100)%num_slides;
-    Model &mod = models[slide];
+
+    Model &slideA = models[slide];
+    Model &slideB = models[(slide + 1) % num_slides];
 
     vex::timer tmr;
     tmr.reset();
@@ -82,24 +86,41 @@ void usercontrol(void)
     Brain.Screen.clearScreen(clear_color.toIntColor());
     clear_time = tmr.time(msec);
 
-    // do_cam_movement();
-
+    do_cam_movement();
     viewport.Clear(clear_color.toIntColor(), params.far + 1);
 
+
+
+    Mat4 front_mat = Translate3D({0.0, 0.0, 2.4}) * RotateX(M_PI / 2.0);
+    Mat4 right_mat = RotateY(-M_PI / 2.0) * Translate3D({0.0, 0.0, 2.4}) * RotateX(M_PI / 2.0) * RotateY(0.0);
+
+    float t_eased = ease_both(t);
+
+    front_mat = RotateY(M_PI / 2.0 * t_eased) * front_mat;
+    right_mat = RotateY(M_PI / 2.0 * t_eased) * right_mat;
+
+    z = 0.95 + sinf(t*M_PI)/8.0;
     Mat4 view = turntable_matrix(rx, ry, z * 10.f, focus_point);
 
-    render(params, mod, viewport, view, Mat4Identity());
+    render(params, slideA, viewport, view, front_mat);
+    render(params, slideB, viewport, view, right_mat);
+
     double render_time_ms = tmr.time(timeUnits::msec);
 
     Brain.Screen.drawImageFromBuffer(viewport.color_buffer, (480 - WIDTH) / 2, 0, WIDTH, HEIGHT);
     full_frame_time = tmr.time(timeUnits::msec);
 
-    // draw_stats(show_stats, render_time_ms, full_frame_time, models[0]);
-    // draw_right_buttons(show_stats);
-    // switch_modes();
+    if (t >= 1.0)
+    {
+      vexDelay(slide_time_ms);
+      t = 0;
+      slide++;
+      slide %= num_slides;
+    }
 
     vexDelay(20 - tmr.time());
-    t++;
+    t += 0.01;
+
     Brain.Screen.render();
   }
 }

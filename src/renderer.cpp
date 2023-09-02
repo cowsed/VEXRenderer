@@ -386,8 +386,8 @@ inline void fill_tri(const render_params &params, Model &m, int i, Mat4 model_ma
                     {
                         Vec2 UV = depth * ((uv1 * ti.w1) + (uv2 * ti.w2) + (uv3 * ti.w3));
 
-                        Vec3 col2 = get_tex(UV.u, UV.v, m.map_kd_width, m.map_kd_height, m.map_kd);
-                        const Vec3 pre_col = col2 * (amb + (1 - amb) * my_clamp(world_normal.Dot(params.light_dir), 0, 1.0));
+                        Vec3 tex_col = get_tex_linear(UV.u, UV.v, m.map_kd_width, m.map_kd_height, m.map_kd);
+                        const Vec3 pre_col = tex_col * (amb + (1 - amb) * my_clamp(world_normal.Dot(params.light_dir), 0, 1.0));
                         const Vec3 col = {powf(pre_col.r, 1 / params.screen_gamma), powf(pre_col.g, 1 / params.screen_gamma), powf(pre_col.b, 1 / params.screen_gamma)};
                         rt.color_buffer[y * rt.width + x] = col.toIntColor();
                     }
