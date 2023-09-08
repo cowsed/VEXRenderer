@@ -16,6 +16,15 @@
 #include "renderer.h"
 #include "animation_controller.h"
 
+#include "1.h"
+#include "2.h"
+// #include "3.h"
+// #include "4.h"
+// #include "5.h"
+// #include "6.h"
+// #include "7.h"
+// #include "8.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <cassert>
@@ -64,9 +73,22 @@ void draw_right_buttons(bool show_stats);
 void draw_stats(bool show_stats, int render_time_ms, int full_frame_time, const Model &model);
 void usercontrol(void)
 {
-  const int num_slides = 8;
-  Model models[num_slides] = {ModeFromFile("1.vobj"), ModeFromFile("2.vobj"), ModeFromFile("3.vobj"), ModeFromFile("4.vobj"), ModeFromFile("5.vobj"), ModeFromFile("6.vobj"), ModeFromFile("7.vobj"), ModeFromFile("8.vobj")};
+  const int num_slides = 2;
+  Model *models[num_slides] = {&m1_model, &m2_model}; //, m3_model, m4_model, m5_model, m6_model, m7_model, m8_model};
 
+  for (int i = 0; i < num_slides; i++)
+  {
+    if (models[i]->verts == 0)
+    {
+      printf("Failed to load %d", i);
+      return;
+    }
+    models[i]->init();
+  }
+
+  printf("A\n");
+  fflush(stdout);
+  vex::wait(.2, vex::sec);
   double full_frame_time = 0.0;
   double clear_time = 0.0;
   double blit_time = 0.0;
@@ -77,8 +99,8 @@ void usercontrol(void)
   while (true)
   {
 
-    Model &slideA = models[slide];
-    Model &slideB = models[(slide + 1) % num_slides];
+    Model &slideA = *models[slide];
+    Model &slideB = *models[(slide + 1) % num_slides];
 
     vex::timer tmr;
     tmr.reset();
@@ -89,8 +111,6 @@ void usercontrol(void)
     do_cam_movement();
     viewport.Clear(clear_color.toIntColor(), params.far + 1);
 
-
-
     Mat4 front_mat = Translate3D({0.0, 0.0, 2.4}) * RotateX(M_PI / 2.0);
     Mat4 right_mat = RotateY(-M_PI / 2.0) * Translate3D({0.0, 0.0, 2.4}) * RotateX(M_PI / 2.0) * RotateY(0.0);
 
@@ -99,7 +119,7 @@ void usercontrol(void)
     front_mat = RotateY(M_PI / 2.0 * t_eased) * front_mat;
     right_mat = RotateY(M_PI / 2.0 * t_eased) * right_mat;
 
-    z = 0.95 + sinf(t*M_PI)/8.0;
+    z = 0.95 + sinf(t * M_PI) / 8.0;
     Mat4 view = turntable_matrix(rx, ry, z * 10.f, focus_point);
 
     render(params, slideA, viewport, view, front_mat);
@@ -284,7 +304,10 @@ void do_cam_movement()
 
 void pre_auton(void)
 {
-  printf("No preauto\n");
+  printf("No preauto2\n");
+  fflush(stdout);
+  vex::wait(.2, vex::sec);
+  usercontrol();
 }
 
 void autonomous(void)

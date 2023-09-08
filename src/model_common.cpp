@@ -7,40 +7,44 @@ uint32_t read_uint32(uint8_t *buf, int index)
     return *(uint32_t *)(buf + index);
 }
 
-
-
 Model ModeFromFile(const char *fname)
 {
+    Model badm = Model(
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0);
+
     vex::brain::sdcard sd;
 
+    if (!sd.exists(fname))
+    {
+        printf("No file %s exists\n", fname);
+        fflush(stdout);
+        vex::wait(.1, vex::sec);
+        return badm;
+    }
     int32_t buf_size = sd.size(fname);
+
     uint8_t *file_buffer = (uint8_t *)malloc(buf_size);
     int32_t read = sd.loadfile(fname, file_buffer, buf_size);
     if (read == 0)
     {
         printf("MODEL NOT FOUND\n");
 
-        Model m = Model{
-            .num_materials = 0,
-            .materials = 0,
-
-            .num_verts = 0,
-            .verts = 0,
-
-            .num_uvs = 0,
-            .uvs = 0,
-
-            .num_normals = 0,
-            .normals = 0,
-
-            .num_faces = 0,
-            .faces = 0,
-
-            .map_kd_width = 0,
-            .map_kd_height = 0,
-            .map_kd = 0,
-            .file_buffer = 0};
-        return m;
+        return badm;
     }
 
     uint32_t num_materials = read_uint32(file_buffer, 0);
@@ -82,26 +86,22 @@ Model ModeFromFile(const char *fname)
 
     */
 
-    Model m = Model{
-        .num_materials = num_materials,
-        .materials = mats,
-
-        .num_verts = num_verts,
-        .verts = verts,
-
-        .num_uvs = num_uvs,
-        .uvs = uvs,
-
-        .num_normals = num_faces,
-        .normals = (Vec3 *)malloc(sizeof(Vec3) * num_faces),
-
-        .num_faces = num_faces,
-        .faces = tris,
-
-        .map_kd_width = kd_width,
-        .map_kd_height = kd_height,
-        .map_kd = map_kd,
-        .file_buffer = file_buffer};
+    Model m = Model(
+        num_materials,
+        mats,
+        num_verts,
+        verts,
+        num_uvs,
+        uvs,
+        num_faces,                                // normals
+        (Vec3 *)malloc(sizeof(Vec3) * num_faces), // normals
+        num_faces,
+        tris,
+        kd_width,
+        kd_height,
+        map_kd,
+        0, 0,
+        file_buffer);
 
     m.init();
     return m;
