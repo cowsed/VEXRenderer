@@ -21,5 +21,5 @@ Model model = Model(tcb::make_span<Material>(materials),
                     tcb::make_span<Vec3>(verts), 
                     tcb::make_span<Vec2>(uvs), 
                     tcb::make_span<Tri>(faces), 
-                    Model::Texture{ 200, 176, Kd_img}
+                    Model::Texture{200, 176, &Kd_img[0]}
                 );

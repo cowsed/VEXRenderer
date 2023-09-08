@@ -19,6 +19,8 @@
 #include <stdlib.h>
 #include <cassert>
 
+#include "3dmodel.h"
+
 #ifndef M_PI
 #define M_PI 3.141592
 #endif
@@ -60,11 +62,15 @@ void do_cam_movement();
 void switch_modes();
 void draw_right_buttons(bool show_stats);
 void draw_stats(bool show_stats, int render_time_ms, int full_frame_time, const Model &model);
+
 void usercontrol(void)
 {
-
-  Model model = ModeFromFile("milk.vobj");
-  assert(model.verts != nullptr);
+  Model model = ModeFromFile("ritvexu.vobj");
+  assert(model.is_ready());
+  Model model2 = ModeFromFile("milk.vobj");
+  assert(model2.is_ready());
+  Model model3 = ModeFromFile("brought.vobj");
+  assert(model3.is_ready());
 
   double full_frame_time = 0.0;
   double clear_time = 0.0;
@@ -85,13 +91,17 @@ void usercontrol(void)
 
     Mat4 view = turntable_matrix(rx, ry, z * 10.f, focus_point);
 
+    // printf("boutta rendere\n");
+    // fflush(stdout);
+    // vex::wait(.4, vex::sec);
+    //
     render(params, model, viewport, view, Mat4Identity());
     double render_time_ms = tmr.time(timeUnits::msec);
 
     Brain.Screen.drawImageFromBuffer(viewport.color_buffer, (480 - WIDTH) / 2, 0, WIDTH, HEIGHT);
     full_frame_time = tmr.time(timeUnits::msec);
 
-    draw_stats(show_stats, render_time_ms, full_frame_time, model);
+    // draw_stats(show_stats, render_time_ms, full_frame_time, model);
     draw_right_buttons(show_stats);
     switch_modes();
 
@@ -117,8 +127,8 @@ void draw_stats(bool show_stats, int render_time_ms, int full_frame_time, const 
     Brain.Screen.printAt(10, 120, false, "frame time: %.0f", full_frame_time);
     Brain.Screen.printAt(10, 140, false, "focus: %.1f, %.1f, %.1f", focus_point.x, focus_point.y, focus_point.z);
 
-    Brain.Screen.printAt(10, 170, false, "%d faces", model.num_faces); // + robot_model.num_faces);
-    Brain.Screen.printAt(10, 190, false, "%d verts", model.num_verts); // + robot_model.num_verts);
+    Brain.Screen.printAt(10, 170, false, "%d faces", model.faces.size()); // + robot_model.num_faces);
+    Brain.Screen.printAt(10, 190, false, "%d verts", model.verts.size()); // + robot_model.num_verts);
   }
 }
 
@@ -261,6 +271,7 @@ void do_cam_movement()
 void pre_auton(void)
 {
   printf("No preauto\n");
+  usercontrol();
 }
 
 void autonomous(void)

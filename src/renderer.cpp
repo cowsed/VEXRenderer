@@ -386,9 +386,14 @@ inline void fill_tri(const render_params &params, Model &m, int i, Mat4 model_ma
                     {
                         Vec2 UV = depth * ((uv1 * ti.w1) + (uv2 * ti.w2) + (uv3 * ti.w3));
 
-                        Vec3 col2 = get_tex_linear(UV.u, UV.v, m.map_kd_width, m.map_kd_height, m.map_kd);
+                        Vec3 col2 = get_tex(UV.u, UV.v, m.kd.width, m.kd.height, m.kd.data);
                         const Vec3 pre_col = col2 * (amb + (1 - amb) * my_clamp(world_normal.Dot(params.light_dir), 0, 1.0));
-                        const Vec3 col = {powf(pre_col.r, 1 / params.screen_gamma), powf(pre_col.g, 1 / params.screen_gamma), powf(pre_col.b, 1 / params.screen_gamma)};
+                        Vec3 col = {powf(pre_col.r, 1 / params.screen_gamma), powf(pre_col.g, 1 / params.screen_gamma), powf(pre_col.b, 1 / params.screen_gamma)};
+
+                        // col.x = UV.x;
+                        // col.y = UV.y;
+                        // col.z = 0.0;
+// 
 
                         rt.color_buffer[y * rt.width + x] = col.toIntColor();
                     }
@@ -408,6 +413,7 @@ inline void fill_tri(const render_params &params, Model &m, int i, Mat4 model_ma
 
 void render(const render_params &params, Model &m, RenderTarget &rt, const Mat4 view, const Mat4 model)
 {
+
     const float aspect = (float)rt.width / (float)rt.height;
     const float fov = params.fov;
     const float near = params.near;
@@ -417,7 +423,7 @@ void render(const render_params &params, Model &m, RenderTarget &rt, const Mat4 
     // Project all the points to screen space
     Mat4 transform = (view * model);
 
-    for (int i = 0; i < m.num_verts; i++)
+    for (int i = 0; i < m.verts.size(); i++)
     {
         Vec4 p = m.verts[i].toVec4(1.0);
 
@@ -434,7 +440,7 @@ void render(const render_params &params, Model &m, RenderTarget &rt, const Mat4 
     }
 
     // Assemble triangles and color they pixels
-    for (int i = 0; i < m.num_faces; i++)
+    for (int i = 0; i < m.faces.size(); i++)
     {
         const Tri t = m.faces[i];
         const Vec3 v1 = m.screen_points[t.v1_index];
@@ -459,6 +465,12 @@ void render(const render_params &params, Model &m, RenderTarget &rt, const Mat4 
         {
             continue;
         }
+        // remove tris who are past far
+        if (v1.z > params.far && v2.z > params.far && v3.z > params.far)
+        {
+            continue;
+        }
+
         // fill_tri(params, m, i, v1, v2, v3, uv1, uv2, uv3, rt);
 
         fill_tri(params, m, i, model, v1, v2, v3, uv1, uv2, uv3, rt);

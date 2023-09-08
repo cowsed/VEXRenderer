@@ -1,41 +1,25 @@
-#include "model.h"
+#include "model_common.h"
 
 
-static const Vec3 verts[{{len .Verts}}] = { {{ range $index, $vert := .Verts}}{{if $index}},{{end}}{{printf "%s" $vert}}{{end}} };
+std::array<Vec3, {{len .Verts}}> verts = {Vec3 {{ range $index, $vert := .Verts}}{{if $index}},{{end}}{{printf "%s" $vert}}{{end}} };
 
-static const Vec2 uvs[{{len .UVs}}] = { {{ range $index, $vert := .UVs}}{{if $index}},{{end}}{{printf "%s" $vert}}{{end}} };
-
-
-static Vec3 normals[{{len .Normals}}] = {  };
-
-static const Tri faces[{{len .Faces}}] = { {{ range $index, $face := .Faces}}{{if $index}},{{end}}{{printf "%s" $face}}{{end}} };
+std::array<Vec2, {{len .UVs}}> uvs = {Vec2 {{ range $index, $vert := .UVs}}{{if $index}},{{end}}{{printf "%s" $vert}}{{end}} };
 
 
-static const Material materials[{{len .Materials}}] = { 
-    {{ range $index, $mat := .Materials}}
+
+std::array<Tri, {{len .Faces}}> faces = {Tri {{ range $index, $face := .Faces}}{{if $index}},{{end}}{{printf "%s" $face}}{{end}} };
+
+
+std::array<Material,{{len .Materials}}>  materials = { 
+    Material{{ range $index, $mat := .Materials}}
     {{if $index}},{{else}} {{end}}{{printf "%s" $mat}}{{end}}
  };
 
-static const uint32_t Kd_img[{{len .Kd_map}}] = { {{range $index, $col := .Kd_map}}{{if $index}}, {{end}}{{printf "0x%08X" $col}}{{end}} };
+std::array<uint32_t, {{len .Kd_map}}>  Kd_img = { {{range $index, $col := .Kd_map}}{{if $index}}, {{end}}{{printf "0x%08X" $col}}{{end}} };
 
-
-Model {{.Name}}_model = Model{
-    .num_materials = {{len .Materials}},
-    .materials = materials,
-
-    .num_verts = {{len .Verts}},
-    .verts = verts,
-
-    .num_uvs = {{len .UVs}},
-    .uvs = uvs,
-
-    .num_normals = {{len .Normals}},
-    .normals = normals,
-
-    .num_faces = {{len .Faces}},
-    .faces = faces,
-
-    .map_kd_width = {{.Kd_width}},
-    .map_kd_height = {{.Kd_height}},
-    .map_kd = Kd_img,
-};
+Model model = Model(tcb::make_span<Material>(materials), 
+                    tcb::make_span<Vec3>(verts), 
+                    tcb::make_span<Vec2>(uvs), 
+                    tcb::make_span<Tri>(faces), 
+                    Model::Texture{ {{.Kd_width}}, {{.Kd_height}}, Kd_img}
+                );

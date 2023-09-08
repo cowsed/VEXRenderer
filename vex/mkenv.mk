@@ -1,13 +1,12 @@
-# VEXcode mkenv.mk 2019_06_06_01
+# VEXcode mkenv.mk 2022_06_26_01
 
-# macros to help with windows paths that include spaces
-sp :=
-sp +=
-qs = $(subst ?,$(sp),$1)
+# macros to help with paths that include spaces
+sp = $() $()
+qs = $(subst ?, ,$1)
 sq = $(subst $(sp),?,$1)
 
 # default platform and build location
-PLATFORM  = sim_vexv5
+PLATFORM  = vexv5
 BUILD     = build
 
 # version for clang headers
@@ -17,31 +16,39 @@ endif
 
 # Project name passed from app
 ifeq ("$(origin P)", "command line")
-PROJECT   = $(P)
+PROJECT  := $(P)
 else
-PROJECT   = $(notdir $(call sq,$(abspath ${CURDIR})))
+PROJECT  := $(call qs,$(notdir $(call sq,${CURDIR})))
 endif
 
-# Toolchain path passed from app
-# need to specify T on command line
-#ifeq ("$(origin T)", "command line")
-#TOOLCHAIN = $(T)
-#endif
-TOOLCHAIN = /home/richie/VEX/Sim/sdk
+# check if the PROJECT name contains any whitespace
+ifneq (1,$(words $(PROJECT)))
+$(error Project name cannot contain whitespace: $(PROJECT))
+endif
 
+# SDK path passed from app
+# if not set then environmental variabled used
+ifeq ("$(origin T)", "command line")
+VEX_SDK_PATH = $(T)
+endif
+# backup if still not set
+VEX_SDK_PATH ?= ${HOME}/sdk
+
+# printf_float flag name passed from app (not used in this version)
+ifeq ("$(origin PRINTF_FLOAT)", "command line")
+PRINTF_FLAG = -u_printf_float
+endif
 
 # Verbose flag passed from app
 ifeq ("$(origin V)", "command line")
-	BUILD_VERBOSE=$(V)
+BUILD_VERBOSE=$(V)
 endif
 
 # allow verbose to be set by makefile if not set by app
-ifndef BUILD_VERBOSE
 ifndef VERBOSE
-BUILD_VERBOSE = 0
+BUILD_VERBOSE ?= 0
 else
-BUILD_VERBOSE = $(VERBOSE)
-endif
+BUILD_VERBOSE ?= $(VERBOSE)
 endif
 
 # use verbose flag
@@ -52,14 +59,14 @@ Q =
 endif
 
 # compile and link tools
-CC      = clang-15
-CXX     = clang-15
-OBJCOPY = objcopy
-SIZE    = size
-LINK    = /usr/bin/ld
-ARCH    = ar
+CC      = clang
+CXX     = clang
+OBJCOPY = arm-none-eabi-objcopy
+SIZE    = arm-none-eabi-size
+LINK    = arm-none-eabi-ld
+ARCH    = arm-none-eabi-ar
 ECHO    = @echo
-DEFINES = -DSimVexV5
+DEFINES = -DVexV5
 
 # platform specific macros
 ifeq ($(OS),Windows_NT)
@@ -69,45 +76,36 @@ MKDIR = md "$(@D)" 2> nul || :
 RMDIR = rmdir /S /Q
 CLEAN = $(RMDIR) $(BUILD) 2> nul || :
 else
-$(info unix build for platform $(PLATFORM))
+# which flavor of linux
+UNAME := $(shell sh -c 'uname -sm 2>/dev/null || Unknown')
+$(info unix build for platform $(PLATFORM) on $(UNAME))
 MKDIR = mkdir -p "$(@D)" 2> /dev/null || :
 RMDIR = rm -rf
 CLEAN = $(RMDIR) $(BUILD) 2> /dev/null || :
 endif
 
+# toolchain include and lib locations
+TOOL_INC  = -I"$(VEX_SDK_PATH)/$(PLATFORM)/clang/$(HEADERS)/include" -I"$(VEX_SDK_PATH)/$(PLATFORM)/gcc/include/c++/4.9.3"  -I"$(VEX_SDK_PATH)/$(PLATFORM)/gcc/include/c++/4.9.3/arm-none-eabi/armv7-ar/thumb" -I"$(VEX_SDK_PATH)/$(PLATFORM)/gcc/include"
+TOOL_LIB  = -L"$(VEX_SDK_PATH)/$(PLATFORM)/gcc/libs"
 
 # compiler flags
-CFLAGS_CL =  -ggdb -Os
-CFLAGS    = ${CFLAGS_CL} --std=gnu++20
-# -Wall -Werror=return-type
-# $(DEFINES)
-CXX_FLAGS = ${CFLAGS_CL} $(DEFINES) -stdlib=libstdc++ -fno-exceptions
+CFLAGS_CL = -target thumbv7-none-eabi -fshort-enums -Wno-unknown-attributes -U__INT32_TYPE__ -U__UINT32_TYPE__ -D__INT32_TYPE__=long -D__UINT32_TYPE__='unsigned long' 
+CFLAGS_V7 = -march=armv7-a -mfpu=neon -mfloat-abi=softfp
+CFLAGS    = ${CFLAGS_CL} ${CFLAGS_V7} -Os -Wall -Werror=return-type -ansi -std=gnu99 $(DEFINES)
+CXX_FLAGS = ${CFLAGS_CL} ${CFLAGS_V7} -Os -Wall -Werror=return-type -fno-rtti -fno-threadsafe-statics -fno-exceptions  -std=gnu++11 -ffunction-sections -fdata-sections $(DEFINES)
 
 # linker flags
-LNK_FLAGS = -pie --build-id --eh-frame-hdr -m elf_x86_64 -rpath $(TOOLCHAIN)/$(PLATFORM)/vendor/mujoco-2.3.5/lib
+LNK_FLAGS = -nostdlib -T "$(VEX_SDK_PATH)/$(PLATFORM)/lscript.ld" -R "$(VEX_SDK_PATH)/$(PLATFORM)/stdlib_0.lib" -Map="$(BUILD)/$(PROJECT).map" --gc-section -L"$(VEX_SDK_PATH)/$(PLATFORM)" ${TOOL_LIB}
+
 # future statuc library
 PROJECTLIB = lib$(PROJECT)
 ARCH_FLAGS = rcs
 
 
-
-
 # libraries
-
-#LIBS = -L$(TOOLCHAIN)/$(PLATFORM)/vendor/assimp/lib -lassimp
-LIBS = -L$(TOOLCHAIN)/$(PLATFORM)/vendor/assimp/lib -lassimp
-LIBS += -L$(TOOLCHAIN)/$(PLATFORM)/vendor/assimp/contrib/zlib -lzlibstatic
-LIBS += -L$(TOOLCHAIN)/$(PLATFORM)/build/ -lsimv5rt 
-LIBS += -lpthread
-LIBS += $(TOOLCHAIN)/$(PLATFORM)/vendor/mujoco-2.3.5/lib/libmujoco.so.2.3.5
-LIBS += -dynamic-linker  
-LIBS += /lib64/ld-linux-x86-64.so.2 /lib64/Scrt1.o /lib64/crti.o /lib64/gcc/x86_64-pc-linux-gnu/13.2.1/crtbeginS.o -L/lib64/gcc/x86_64-pc-linux-gnu/13.2.1 -L/lib64 -L/lib64 -L/lib64 -L/lib -L/usr/lib -lstdc++ -lc -lm -lgcc -lglfw -lGLEW -lGL -lgcc --as-needed -lgcc_s --no-as-needed -lc -lgcc --as-needed -lgcc_s --no-as-needed --no-as-needed /usr/lib64/gcc/x86_64-pc-linux-gnu/13.2.1/crtendS.o /lib64/crtn.o
-
+LIBS =  --start-group -lv5rt -lstdc++ -lc -lm -lgcc --end-group
 
 # include file paths
 INC += $(addprefix -I, ${INC_F})
-INC += "-I$(TOOLCHAIN)/$(PLATFORM)/include/"
-INC += "-I$(TOOLCHAIN)/$(PLATFORM)/vendor/imgui"
-INC += "-I$(TOOLCHAIN)/$(PLATFORM)/vendor/imgui/backends"
-INC += -include "$(TOOLCHAIN)/$(PLATFORM)/otherInclude/replacement.h"
+INC += -I"$(VEX_SDK_PATH)/$(PLATFORM)/include"
 INC += ${TOOL_INC}

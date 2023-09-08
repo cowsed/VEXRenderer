@@ -130,9 +130,9 @@ func main() {
 
 	mod := LoadModel(objName, mtlName, name)
 
-	fmt.Println("BINARY")
-	SaveBinary(mod)
-	// SaveText(mod)
+	//fmt.Println("BINARY")
+	//SaveBinary(mod)
+	SaveText(mod)
 
 }
 
