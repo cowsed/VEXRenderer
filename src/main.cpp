@@ -7,11 +7,12 @@
 /*                                                                            */
 /*----------------------------------------------------------------------------*/
 
-#include "vex.h"
 #include <vector>
 
 #include <iostream>
 #include <chrono>
+
+#include "math.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,8 +20,6 @@
 
 #include "animation_controller.h"
 #include "renderer.h"
-
-#include "3dmodel.h"
 
 #define WIDTH (4 * 120)
 #define HEIGHT (240)
@@ -134,12 +133,13 @@ void usercontrol(void)
 
     ac.tick(1.0 / 60.0, params, viewport, view);
     // render(params, ritvexu_model, viewport, view, Mat4Identity());
+
     double render_time_ms = tmr.time(timeUnits::msec);
 
     Brain.Screen.drawImageFromBuffer(viewport.color_buffer, (480 - WIDTH) / 2, 0, WIDTH, HEIGHT);
     full_frame_time = tmr.time(timeUnits::msec);
 
-    draw_stats(show_stats, render_time_ms, full_frame_time, model);
+    draw_stats(show_stats, render_time_ms, full_frame_time, ac.GetModel());
     draw_right_buttons(show_stats);
     switch_modes();
 
