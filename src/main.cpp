@@ -13,20 +13,17 @@
 #include <iostream>
 #include <chrono>
 
-#include "renderer.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <cassert>
 
+#include "animation_controller.h"
+#include "renderer.h"
+
 #include "3dmodel.h"
 
-#ifndef M_PI
-#define M_PI 3.141592
-#endif
-
-#define WIDTH (3 * 120)
-#define HEIGHT (1 * 240)
+#define WIDTH (4 * 120)
+#define HEIGHT (240)
 const Vec3 clear_color = {1.0, 1.0, 1.0};
 
 const render_params params = {
@@ -54,8 +51,8 @@ bool demo_mode = false;
 Vec3 focus_point = {0, .2, 0};
 double rx = -M_PI / 4;
 double ry = M_PI / 4;
-double z = 1.15;
-bool show_stats = true;
+double z = 1.05;
+bool show_stats = false;
 bool pan = false;
 
 void do_cam_movement();
@@ -65,12 +62,56 @@ void draw_stats(bool show_stats, int render_time_ms, int full_frame_time, const 
 
 void usercontrol(void)
 {
-  Model model = ModeFromFile("ritvexu.vobj");
-  assert(model.is_ready());
-  Model model2 = ModeFromFile("milk.vobj");
-  assert(model2.is_ready());
-  Model model3 = ModeFromFile("brought.vobj");
-  assert(model3.is_ready());
+  Model ritvexu_model = ModeFromFile("ritvexu.vobj");
+  assert(ritvexu_model.is_ready());
+  Model brought_model = ModeFromFile("brought.vobj");
+  assert(brought_model.is_ready());
+  Model milk_model = ModeFromFile("milk.vobj");
+  assert(milk_model.is_ready());
+
+  double rx = 0;
+  double ry = -M_PI / 10;
+  double z = .65;
+
+  const int slide_frames = 80;
+  auto rit_slide = SlideBetween({-4, 0, 0}, {4, 0, 0}, slide_frames, ease_middle);
+  auto word_slide = SlideBetween({4, 0, 0}, {-4, 0, 0}, slide_frames, ease_middle);
+
+  int milk_slide_frames = 60;
+
+  auto milk_appear = [=](uint tick, AnimationController &ac)
+  {
+    float t = (float)tick / (float)milk_slide_frames;
+    t = ease_end(t);
+    t *= 8;
+    t -= 8;
+    Vec3 p = {0, -.6f, t + 2.6f};
+    float angle = t * M_PI / 2.0 + 4.25 * M_PI / 2.0;
+    Mat4 m = RotateY(angle);
+    m.SetPos(p);
+    ac.SetModelMatrix(m);
+  };
+
+  auto do_nothing = [](uint tick, AnimationController &ac) {};
+
+  AnimationController ac;
+  ac.Setup({{SetMatrix(Mat4Identity()), 0},
+            {SetModel(&ritvexu_model), 0},
+            {SetPosition({-4.0, 0, 0}), 0},
+            {rit_slide, slide_frames},
+            {do_nothing, 10},
+
+            {SetModel(&brought_model), 0},
+            {SetPosition({-1.0, 0, 0}), 0},
+            {word_slide, slide_frames},
+            {do_nothing, 10},
+
+            {SetModel(&milk_model), 0},
+            {SetPosition({0, 0, 4.0}), 0},
+            {milk_appear, milk_slide_frames},
+            {do_nothing, 10},
+            //
+            {do_nothing, 100}});
 
   double full_frame_time = 0.0;
   double clear_time = 0.0;
@@ -91,17 +132,14 @@ void usercontrol(void)
 
     Mat4 view = turntable_matrix(rx, ry, z * 10.f, focus_point);
 
-    // printf("boutta rendere\n");
-    // fflush(stdout);
-    // vex::wait(.4, vex::sec);
-    //
-    render(params, model, viewport, view, Mat4Identity());
+    ac.tick(1.0 / 60.0, params, viewport, view);
+    // render(params, ritvexu_model, viewport, view, Mat4Identity());
     double render_time_ms = tmr.time(timeUnits::msec);
 
     Brain.Screen.drawImageFromBuffer(viewport.color_buffer, (480 - WIDTH) / 2, 0, WIDTH, HEIGHT);
     full_frame_time = tmr.time(timeUnits::msec);
 
-    // draw_stats(show_stats, render_time_ms, full_frame_time, model);
+    draw_stats(show_stats, render_time_ms, full_frame_time, model);
     draw_right_buttons(show_stats);
     switch_modes();
 

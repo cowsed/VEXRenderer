@@ -3,4 +3,4 @@
 #include "model_common.h"
 
 
-extern Model intense_milk_model;
+extern Model rit_vex_u_model;

@@ -37,7 +37,8 @@
 		"streambuf": "cpp",
 		"tuple": "cpp",
 		"utility": "cpp",
-		"typeinfo": "cpp"
+		"typeinfo": "cpp",
+		"cstddef": "cpp"
 	},
 	"C_Cpp.default.systemIncludePath": [
 		"${config:vexrobotics.vexcode.Cpp.Sdk.Home}/V5/V5_20220726_10_00_00/vexv5/gcc/include/sys"

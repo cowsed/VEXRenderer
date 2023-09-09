@@ -10,15 +10,25 @@ uint32_t read_uint32(uint8_t *buf, int index)
 Model ModeFromFile(const char *fname)
 {
     vex::brain::sdcard sd;
+    vex::brain Brain;
 
-    if (!sd.isInserted()){
-        printf("No SD Card Inserted\n");
+    auto draw_error_text = [&Brain](std::string txt, int y)
+    {
+        Brain.Screen.clearScreen(vex::red);
+        int w = Brain.Screen.getStringWidth(txt.c_str());
+        Brain.Screen.printAt(240 - w / 2, y, true, "%s", txt.c_str());
+        printf("%s", txt.c_str());
+    };
+
+    if (!sd.isInserted())
+    {
+        draw_error_text("No SD Card Inserted", 140);
         return Model(false);
     }
 
     if (!sd.exists(fname))
     {
-        printf("File not found\n");
+        draw_error_text(std::string(fname) + " not found", 140);
         return Model(false);
     }
 
@@ -26,7 +36,7 @@ Model ModeFromFile(const char *fname)
 
     if (buf_size == 0)
     {
-        printf("File is empty\n");
+        draw_error_text(std::string(fname) + " was empty.", 140);
         return Model(false);
     }
 
@@ -34,14 +44,14 @@ Model ModeFromFile(const char *fname)
 
     if (file_buffer == NULL)
     {
-        printf("Vex won't give me memory :(\n");
+        draw_error_text("Out of memory", 140);
         return Model(false);
     }
 
     int32_t read = sd.loadfile(fname, file_buffer, buf_size);
     if (read == 0)
     {
-        printf("File not read\n");
+        draw_error_text(std::string(fname) + " couldn't be read", 140);
         return Model(false);
     }
 
