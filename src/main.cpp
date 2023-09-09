@@ -139,7 +139,7 @@ void usercontrol(void)
     Brain.Screen.drawImageFromBuffer(viewport.color_buffer, (480 - WIDTH) / 2, 0, WIDTH, HEIGHT);
     full_frame_time = tmr.time(timeUnits::msec);
 
-    draw_stats(show_stats, render_time_ms, full_frame_time, model);
+    draw_stats(show_stats, render_time_ms, full_frame_time, ac.GetModel());
     draw_right_buttons(show_stats);
     switch_modes();
 
@@ -309,7 +309,8 @@ void do_cam_movement()
 void pre_auton(void)
 {
   printf("No preauto\n");
-  usercontrol();
+
+
 }
 
 void autonomous(void)
