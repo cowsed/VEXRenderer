@@ -49,9 +49,10 @@ void printTextCenteredAt(int x, int y, const char *str)
 
 bool demo_mode = false;
 Vec3 focus_point = {0, .2, 0};
-double rx = -M_PI / 4;
-double ry = M_PI / 4;
-double z = 1.05;
+
+  double rx = 0;
+  double ry = -M_PI / 10;
+  double z = .65;
 bool show_stats = false;
 bool pan = false;
 
@@ -69,9 +70,6 @@ void usercontrol(void)
   Model milk_model = ModeFromFile("milk.vobj");
   assert(milk_model.is_ready());
 
-  double rx = 0;
-  double ry = -M_PI / 10;
-  double z = .65;
 
   const int slide_frames = 80;
   auto rit_slide = SlideBetween({-4, 0, 0}, {4, 0, 0}, slide_frames, ease_middle);
